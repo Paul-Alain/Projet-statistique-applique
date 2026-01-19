@@ -1,0 +1,415 @@
+---
+title: "Ce document est un  rapport de stat desc"
+author: "Groupe de travail"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document: 
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,        # ne pas afficher le code
+  message = FALSE,     # masquer messages
+  warning = FALSE,     # masquer warnings
+  fig.align = "left",# centrer tous les graphiques
+  fig.width = 7,       # largeur standard
+  fig.height = 5       # hauteur standard
+  
+)
+
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+
+
+```
+
+\newpage
+
+# Exploration de la base de données
+
+```{r}
+df <- readRDS("BASE_SCR_ENSAE_ANONYME.rds")
+
+```
+
+```{r include=FALSE}
+dim(df)
+```
+
+La base de données utilisée contient 5 399 observations et 8 variables, réparties en 4 variables numériques et 4 variables qualitatives (chaînes de caractères).
+Dans cette section, nous présentons de manière détaillée chacune de ces variables.
+
+## Variables numériques
+
+La base comprend les variables quantitatives suivantes :
+
+- SOCIETE :
+Identifiant numérique de la compagnie d’assurance. Il s’agit d’un entier compris entre $0$ et $270$.
+
+- FONDS PROPRES :
+Variable numérique exprimée en valeur entière (ordre de grandeur : milliards).
+Elle représente le montant des fonds propres détenus par la compagnie d’assurance.
+
+- SCR (Solvency Capital Requirement) :
+Variable numérique exprimée en valeur entière (ordre de grandeur : centaines de millions à milliards).
+Elle correspond au capital de solvabilité requis au sens de la réglementation Solvabilité II.
+
+- RATIO :
+Variable numérique exprimée sous forme d’un nombre réel arrondi au centième (ordre de grandeur : inférieur à 10).
+Elle correspond au ratio de solvabilité, défini comme le quotient entre les fonds propres et le SCR :
+
+$$RATIO=\frac{FONDS \text{ } PROPRES}{SCR}$$
+
+##  Variables non numériques
+
+La base comprend également les variables qualitatives suivantes :
+
+- Nature :
+Indique la nature de l’activité de la compagnie d’assurance.
+Elle prend les valeurs suivantes :
+FRPS,
+Mixte,
+Non Vie,
+Réassurance,
+Vie / Capitalisation
+
+- Famille :
+Identifie le type institutionnel de la compagnie d’assurance.
+Elle prend les valeurs :
+Bancassureur,
+Mutualiste,
+Traditionnel
+
+- Annee : Année d’observation des données.
+Elle prend les valeurs comprises entre 2016 et 2025.
+
+- Remise : Indique la périodicité de déclaration des données, soit annuelle, soit trimestrielle.
+
+Voici-joint un apercu de la base de données:
+
+```{r}
+
+kable(head(df, 5)
+      )
+
+```
+Les variables **SCR** et **fonds propres** présentent des ordres de grandeur très élevés. Nous avons donc appliqué une transformation logarithmique afin de réduire leur échelle et de faciliter l’analyse.
+
+# Traitement des données 
+
+Dans cette section, nous explorons la base complète, puis les données sont scindées afin d’obtenir une base annuelle et une base trimestrielle.
+
+## Valeurs manquantes
+
+```{r include=FALSE}
+## Checking of missing value
+
+
+# Nombre de valeurs manquantes par variable
+na_table <- data.frame(
+  Variable = names(df),
+  Nb_valeurs_manquantes = colSums(is.na(df))
+)
+
+kable(
+  na_table,
+  caption = "Nombre de valeurs manquantes par variable",
+  align = "l"
+)
+
+```
+```{r}
+library(knitr)
+
+kable(
+  df[!complete.cases(df), ],
+  caption = "Observations contenant au moins une valeur manquante"
+)
+
+```
+
+Il y a peu de valeurs manquantes dans la base de données : seules trois compagnies en présentent, et uniquement pour des données annuelles. Étant donné qu’il existe des valeurs trimestrielles pour ces variables, nous explorerons la possibilité d’imputer les valeurs manquantes à partir des données trimestrielles.
+
+Cependant, il est important de calculer les coefficients de variation pour ces sociétés afin d’évaluer s’il est raisonnable d’estimer les valeurs manquantes par la moyenne.
+
+```{r}
+## data filtering to keep only relevant societies
+vars <- c("FONDS PROPRES", "SCR", "RATIO","Remise")
+df_A_soc <- df %>%
+  filter(
+    Remise == "A",
+    SOCIETE %in% c(149, 190, 235)
+  )
+
+## CV of relevant variables
+cv_soc_detail <- df_A_soc %>%
+  group_by(SOCIETE) %>%
+  summarise(across(
+    all_of(vars),
+    ~ sd(., na.rm = TRUE) / mean(., na.rm = TRUE),
+    .names = "CV_{.col}"
+  ))
+
+kable(cv_soc_detail)
+
+
+```
+Les Coefficients de variations sont relativement faible, en dessous de $0,39$, à l'exception de celui de la société indexée par **235** qui est très proche de $1$. 
+
+# Analyse descriptive 
+
+## Analyse univariée
+
+###  Répartition des compagnies selon leur nature
+
+```{r}
+
+# Percentage computation
+df_pct <- df %>%
+  group_by(Nature) %>%
+  summarise(count = n()) %>%
+  mutate(Pourcentage = count / sum(count) * 100)
+
+# Graphique 
+ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nature)) +
+  geom_bar(stat = "identity", width = 0.5, color = "gray30") +  
+  geom_text(aes(label = paste0(round(Pourcentage, 2), "%")), 
+            hjust = 1, color = "black", size = 3.5) + 
+  coord_flip() +
+  labs(title = "Répartition des compagnies par Nature (%)",
+       x = "Nature",
+       y = "") +
+  scale_y_continuous(breaks = NULL) +  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    panel.grid.major.y = element_blank(),          
+    panel.grid.minor.y = element_blank(),          
+    panel.grid.major.x = element_line(color = "gray80", linetype = "dashed"),
+    panel.grid.minor.x = element_line(color = "gray90", linetype = "dashed"),
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.text = element_text(color = "black")
+  ) +
+  scale_fill_brewer(palette = "Set2")  # palette harmonieuse
+
+
+```
+Plus de la moitié des compagnies exercent dans l’assurance non-vie. Par ailleurs, très peu d’entreprises, soit $0,91 \%$, opèrent dans les Fonds de Retraite et de Prévoyance Sociale (FRPS). De même, les compagnies de réassurance ne représentent qu’une faible proportion du marché, soit $2,56 \%$ des compagnies d’assurance.
+
+
+### Répartition des compagnies par famille
+
+```{r}
+
+# Percentage calculation per Famille
+df_pct <- df %>%
+  group_by(Famille) %>%
+  summarise(count = n()) %>%
+  mutate(Pourcentage = count / sum(count) * 100)
+
+# Graphique
+ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Famille)) +
+  geom_bar(stat = "identity", width = 0.5, color = "gray30") +  
+  geom_text(aes(label = paste0(round(Pourcentage, 2), "%")), 
+            hjust = 1, color = "black", size = 3.5) +  
+  coord_flip() +
+  labs(title = "Répartition des compagnies par Famille (%)",
+       x = "Famille",
+       y = "") +
+  scale_y_continuous(breaks = NULL) +  
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(color = "gray80", linetype = "dashed"),
+    panel.grid.minor.x = element_line(color = "gray90", linetype = "dashed"),
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.text = element_text(color = "black")
+  ) +
+  scale_fill_brewer(palette = "Set2")  
+
+```
+Là encore, plus de la moitié des compagnies sont mutualistes. Elles représentent en effet $53,71 \%$ des compagnies, tandis que le reste se répartit de manière égale entre les assureurs traditionnels et les bancassureurs.
+
+## Analyse bivarariée
+
+
+```{r}
+## Crossed distribution
+df_pct <- df %>%
+  group_by(Famille, Nature) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Famille) %>%
+  mutate(pct = n / sum(n) * 100)
+
+ggplot(df_pct, aes(x = Famille, y = pct, fill = Nature)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = paste0(round(pct, 1), "%")),
+            position = position_dodge(width = 0.9), vjust = -0.5, size = 3.5) +
+  labs(title = "Répartition de la Nature par Famille (en %)",
+       x = "Famille",
+       y = "") +  # supprimer label axe y
+  scale_y_continuous(breaks = NULL) +  # pas de graduations
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+
+
+```
+
+Dans toutes les catégories de familles, la majorité des entreprises exerce dans l’assurance non-vie.
+
+\newpage
+
+# Analyse des données quantitatives au cours du temps 
+
+Dans cette partie, nous effectuons une analyse exploratoire des données annuelles.
+
+```{r}
+
+### Here we Transforme numeric variable by dividing them by 10^8 to change  their scale
+
+num_vars <- names(df)[sapply(df, is.numeric)]
+
+num_vars <- setdiff(num_vars, c("SOCIETE","Annee", "RATIO")) 
+
+## function to change variables' scales
+
+divide_1e8 <- function(df, exclude = c("SOCIETE", "Annee", "RATIO")) {
+  num_vars <- names(df)[sapply(df, is.numeric)]
+  num_vars <- setdiff(num_vars, exclude)
+
+  df %>%
+    dplyr::mutate(across(all_of(num_vars), ~ . / 1e8))
+}
+
+## Spliting the dabase into two parts: annually and quarterly
+df_annual <- df %>% filter(Remise == "A")
+df_quarterly <- df %>% filter(Remise %in% c("T1", "T2", "T3", "T4"))
+
+df_annual <- divide_1e8(df_annual)
+df_quarterly <- divide_1e8(df_quarterly)
+
+
+```
+
+
+
+```{r}
+## Mean computation
+
+# numerical variable to analyse
+num_vars <- setdiff(names(df_annual)[sapply(df_annual, is.numeric)], c("SOCIETE","Annee"))
+
+# mean per years per Famille
+df_mean_famille <- df_annual %>%
+  group_by(Annee, Famille) %>%
+  summarise(across(all_of(num_vars), mean, na.rm = TRUE), .groups = "drop")
+
+# mean per years per Nature
+df_mean_nature <- df_annual %>%
+  group_by(Annee, Nature) %>%
+  summarise(across(all_of(num_vars), mean, na.rm = TRUE), .groups = "drop")
+
+```
+
+
+```{r}
+## Conversion into a time series after calculating the mean for each relevant variable, grouped by Nature and Famille.
+
+# For famille
+
+ts_famille <- list()
+
+for(v in num_vars){
+  ts_famille[[v]] <- lapply(unique(df_mean_famille$Famille), function(fam){
+    zoo(df_mean_famille[df_mean_famille$Famille == fam, v],
+        order.by = df_mean_famille$Annee[df_mean_famille$Famille == fam])
+  })
+  names(ts_famille[[v]]) <- unique(df_mean_famille$Famille)
+}
+
+## For nature
+ts_nature <- list()
+
+for(v in num_vars){
+  ts_nature[[v]] <- lapply(unique(df_mean_nature$Nature), function(nat){
+    zoo(df_mean_nature[df_mean_nature$Nature == nat, v],
+        order.by = df_mean_nature$Annee[df_mean_nature$Nature == nat])
+  })
+  names(ts_nature[[v]]) <- unique(df_mean_nature$Nature)
+}
+
+
+
+```
+
+```{r include=FALSE}
+## Average rate over the period
+df_scr <- df_mean_famille %>%
+  select(Annee, Famille, SCR) %>%
+  mutate(Annee = as.numeric(Annee))   
+
+df_scr <- df_scr %>% arrange(Famille, Annee) # sort by year and famille
+
+
+# Computation
+evol_scr <- df_scr %>%
+  group_by(Famille) %>%
+  summarise(
+    debut = first(SCR),          
+    fin = last(SCR),            
+    n = n() - 1,                
+    evol_moy_pct = ((fin / debut)^(1/n) - 1) * 100  # average rate
+  )
+
+evol_scr
+
+```
+
+```{r}
+
+ggplot(df_scr, aes(x = Annee, y = SCR, color = Famille)) +
+  geom_line(size = 1.2) +    
+  geom_point(size = 2) +     
+  labs(title = "Évolution temporelle du SCR moyen par Famille",
+       x = "Année", y = "SCR") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+
+
+
+```
+
+
+Le capital de solvabilité requis connaît une tendance à la croissance sur la période 2016-2024, ce qui peut traduire soit une augmentation du niveau d’activité des compagnies d’assurance, soit une orientation croissante de leurs portefeuilles vers des actifs risqués. Cette hausse est  marquée chez les entreprises traditionnelles d’assurance par  une évolution moyenne de $7,3 \%$ contre $4,7 \%$ chez les bancassureurs  et $3,33\%$ pour les mutualistes.
+
+Il convient également de noter que les bancassureurs et les compagnies d’assurance traditionnelles présentent, en moyenne, un ratio de solvabilité relativement plus élevé. 
+
+```{r}
+df_ratio <- df_mean_famille %>%
+  select(Annee, Famille, RATIO) %>%
+  mutate(Annee = as.numeric(Annee))   
+
+df_ratio <- df_ratio %>% arrange(Famille, Annee) # sort by year and famille
+
+library(ggplot2)
+
+ggplot(df_ratio, aes(x = Annee, y = RATIO, color = Famille)) +
+  geom_line(size = 1.2) +    
+  geom_point(size = 2) +     
+  labs(title = "Évolution temporelle du RATIO moyen par Famille",
+       x = "Année", y = "RATIO") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+
+
+```
+
+Le ratio de solvabilité moyen des différentes familles reste supérieur à $2 \%$ sur l’ensemble de la période. Il est même relativement plus élevé chez les mutualistes, se maintenant constamment au‑dessus de $3,5 \%$. Cette observation s’expliquerait par le fait que ces derniers sont moins exposés au risque, comparativement aux bancassureurs et aux sociétés d’assurance traditionnelles, comme le confirme l’analyse précédente.
