@@ -25,7 +25,7 @@ library(zoo)
 library(ggplot2)
 library(knitr)
 library(kableExtra)
-
+library(glue)
 
 ```
 
@@ -124,6 +124,7 @@ kable(
 )
 
 ```
+
 ```{r}
 library(knitr)
 
@@ -134,9 +135,8 @@ kable(
 
 ```
 
-Il y a peu de valeurs manquantes dans la base de données : seules trois compagnies en présentent, et uniquement pour des données annuelles. Étant donné qu’il existe des valeurs trimestrielles pour ces variables, nous explorerons la possibilité d’imputer les valeurs manquantes à partir des données trimestrielles.
-
-Cependant, il est important de calculer les coefficients de variation pour ces sociétés afin d’évaluer s’il est raisonnable d’estimer les valeurs manquantes par la moyenne.
+Il y a peu de valeurs manquantes dans la base de données : seules trois compagnies en présentent (pour les données annuelles) et ces compagnies ne dispose pas de données trimestrielles. 
+Nous explorons calculons les coefficients de variation pour ces sociétés afin d’évaluer s’il est raisonnable d’estimer les valeurs manquantes par la moyenne.
 
 ```{r}
 ## data filtering to keep only relevant societies
@@ -160,7 +160,37 @@ kable(cv_soc_detail)
 
 
 ```
-Les Coefficients de variations sont relativement faible, en dessous de $0,39$, à l'exception de celui de la société indexée par **235** qui est très proche de $1$. 
+Les Coefficients de variations sont relativement faible, en dessous de $0,39$, à l'exception de celui des fonds propres de la société indexée par **235** qui est très proche de $1$. Ci-dessous est l'ensemble des valeurs annuelles des fonds propres de cette société. 
+```{r}
+tab1<-df%>%filter(
+  Remise=="A",
+  SOCIETE==235
+  
+)
+kable(tab1)
+```
+```{r, include=FALSE}
+df_filter<- df%>%filter(Remise %in% c("T4", "A")
+  
+)%>%arrange(SOCIETE )
+
+df_filter_T4<-df_filter%>%filter(Remise=="T3", SOCIETE %in% c(149, 190, 235))
+df_filter_A<-df_filter%>%filter(Remise=="A", 
+SOCIETE %in% c(149, 190, 235))
+
+glue("La taille de df_filter_T4 est:", nrow(df_filter_T4))
+
+glue("La taille de df_filter_A est:", nrow(df_filter_A))
+
+# Filling lissing value
+
+df<-df%>%mutate( across(where(is.numeric),
+             ~replace_na(.x, mean(.x, na.rm=TRUE))
+  )
+)
+
+```
+
 
 # Analyse descriptive 
 
@@ -408,7 +438,6 @@ ggplot(df_ratio, aes(x = Annee, y = RATIO, color = Famille)) +
        x = "Année", y = "RATIO") +
   theme_minimal(base_size = 14) +
   theme(legend.position = "bottom")
-
 
 ```
 
