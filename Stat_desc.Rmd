@@ -26,6 +26,9 @@ library(ggplot2)
 library(knitr)
 library(kableExtra)
 library(glue)
+library(scales)
+library(ggh4x)
+
 
 ```
 
@@ -35,7 +38,7 @@ library(glue)
 
 ```{r}
 df <- readRDS("BASE_SCR_ENSAE_ANONYME.rds")
-
+df_orig<-df
 ```
 
 ```{r include=FALSE}
@@ -91,7 +94,7 @@ Elle prend les valeurs comprises entre 2016 et 2025.
 
 - Remise : Indique la périodicité de déclaration des données, soit annuelle, soit trimestrielle.
 
-Voici-joint un apercu de la base de données:
+Le tableau ci-après est un  apercu des $05$ premières ligne de la base de données:
 
 ```{r}
 
@@ -99,11 +102,33 @@ kable(head(df, 5)
       )
 
 ```
-Les variables **SCR** et **fonds propres** présentent des ordres de grandeur très élevés. Nous avons donc appliqué une transformation logarithmique afin de réduire leur échelle et de faciliter l’analyse.
+Les variables **SCR** et **fonds propres** présentent des ordres de grandeur particulièrement élevés. Nous avons normalisé ces variables afin de les exprimer en centaines de millions d’euros. Le tableau ci-dessous présente un aperçu des $05$ première ligne de la base de données après normalisation.
+
+```{r}
+### Here we Transforme numeric variable by dividing them by 10^8 to change  their scale
+
+num_vars <- names(df)[sapply(df, is.numeric)]
+
+num_vars <- setdiff(num_vars, c("SOCIETE","Annee", "RATIO")) 
+
+## function to change variables' scales
+
+divide_1e8 <- function(df, exclude = c("SOCIETE", "Annee", "RATIO")) {
+  num_vars <- names(df)[sapply(df, is.numeric)]
+  num_vars <- setdiff(num_vars, exclude)
+
+  df %>%
+    dplyr::mutate(across(all_of(num_vars), ~ . / 1e8))
+}
+df<-divide_1e8(df)
+
+kable(head(df,5))
+```
+
 
 # Traitement des données 
 
-Dans cette section, nous explorons la base complète, puis les données sont scindées afin d’obtenir une base annuelle et une base trimestrielle.
+Cette section est consacrée à l’exploration de la base de données en vue de l’identification et du traitement des anomalies.
 
 ## Valeurs manquantes
 
@@ -135,8 +160,7 @@ kable(
 
 ```
 
-Il y a peu de valeurs manquantes dans la base de données : seules trois compagnies en présentent (pour les données annuelles) et ces compagnies ne dispose pas de données trimestrielles. 
-Nous explorons calculons les coefficients de variation pour ces sociétés afin d’évaluer s’il est raisonnable d’estimer les valeurs manquantes par la moyenne.
+La base de données comporte peu de valeurs manquantes : seules trois compagnies en présentent au niveau des données annuelles, et ces dernières ne disposent pas de données trimestrielles. Nous calculons les coefficients de variation pour ces sociétés afin d’évaluer la pertinence d’une imputation des valeurs manquantes par la moyenne.
 
 ```{r}
 ## data filtering to keep only relevant societies
@@ -160,7 +184,7 @@ kable(cv_soc_detail)
 
 
 ```
-Les Coefficients de variations sont relativement faible, en dessous de $0,39$, à l'exception de celui des fonds propres de la société indexée par **235** qui est très proche de $1$. Ci-dessous est l'ensemble des valeurs annuelles des fonds propres de cette société. 
+Les coefficients de variation sont relativement faibles, inférieurs à $0,39$, à l’exception de celui des fonds propres de la société indexée par $235$, qui est très proche de1. Le tableau ci-dessous présente l’ensemble des valeurs annuelles des fonds propres de cette société.
 ```{r}
 tab1<-df%>%filter(
   Remise=="A",
@@ -196,10 +220,11 @@ df<-df%>%mutate( across(where(is.numeric),
 
 ## Analyse univariée
 
+Cette section est consacrée à l’analyse univariée des variables, visant à décrire leurs distributions et leurs principales caractéristiques statistiques.
+
 ###  Répartition des compagnies selon leur nature
 
 ```{r}
-
 # Percentage computation
 df_pct <- df %>%
   group_by(Nature) %>%
@@ -230,7 +255,7 @@ ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nat
 
 
 ```
-Plus de la moitié des compagnies exercent dans l’assurance non-vie. Par ailleurs, très peu d’entreprises, soit $0,91 \%$, opèrent dans les Fonds de Retraite et de Prévoyance Sociale (FRPS). De même, les compagnies de réassurance ne représentent qu’une faible proportion du marché, soit $2,56 \%$ des compagnies d’assurance.
+L’activité d’assurance non-vie concentre la majorité des compagnies du marché. À l’inverse, les Fonds de Retraite et de Prévoyance Sociale (FRPS) demeurent très faiblement représentés, avec une part limitée à $0,91 \%$. De même, le segment de la réassurance ne regroupe qu’une fraction marginale des compagnies d’assurance, soit $2,56 \%$.
 
 
 ### Répartition des compagnies par famille
@@ -266,7 +291,7 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
   scale_fill_brewer(palette = "Set2")  
 
 ```
-Là encore, plus de la moitié des compagnies sont mutualistes. Elles représentent en effet $53,71 \%$ des compagnies, tandis que le reste se répartit de manière égale entre les assureurs traditionnels et les bancassureurs.
+La structure du marché est majoritairement dominée par les organismes mutualistes, lesquels représentent $53,71 \%$ de l’ensemble des compagnies. Le solde du marché se répartit de manière relativement équilibrée entre les assureurs traditionnels et les bancassureurs.
 
 ## Analyse bivarariée
 
@@ -292,153 +317,506 @@ ggplot(df_pct, aes(x = Famille, y = pct, fill = Nature)) +
 
 
 ```
+À première vue, on observe une répartition déséquilibrée de la nature des services prestés selon les familles d’assureurs. Quelle que soit la catégorie considérée, la majorité des entreprises opère dans l’assurance non-vie, tandis que moins de
+$20\%$ proposent des prestations d’assurance vie et de capitalisation, moins de $8\%$ interviennent dans la réassurance, et moins de $2\%$ fournissent des services de fonds de retraite et de prévoyance sociale.
+```{r}
+## Crossed distribution
+df_pct <- df %>%
+  group_by(Nature, Famille) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Nature) %>%
+  mutate(pct = n / sum(n) * 100)
 
-Dans toutes les catégories de familles, la majorité des entreprises exerce dans l’assurance non-vie.
+ggplot(df_pct, aes(x = Nature, y = pct, fill = Famille)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = paste0(round(pct, 1), "%")),
+            position = position_dodge(width = 0.9), vjust = -0.5, size = 3.5) +
+  labs(title = "Répartition de la  Famille par Nature  (en %)",
+       x = "Nature",
+       y = "") +  # supprimer label axe y
+  scale_y_continuous(breaks = NULL) +  # pas de graduations
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+
+```
+
+À l’exception du segment de la réassurance, les organismes mutualistes apparaissent comme majoritairement représentés dans l’ensemble des regroupements par nature d’activité. Leur part relative demeure plus élevée que celle des bancassureurs et des assureurs traditionnels, tant dans les catégories des prestataires d’assurance non-vie que dans celles de l’assurance vie et de la capitalisation. En revanche, le secteur de la réassurance est dominé par les assureurs traditionnels, lesquels représentent $71,7\%$ des acteurs recensés. Il convient également de souligner que seuls les organismes mutualistes et les assureurs traditionnels interviennent dans la fourniture de  fonds de retraite et de prévoyance sociale (FRSP). Enfin, la répartition des différentes familles d’assureurs apparaît globalement équilibrée dans les activités mixtes combinant assurance vie et assurance non-vie.
+
 
 \newpage
 
-# Analyse des données quantitatives au cours du temps 
+# Analyse dynamique des données quantitatives.
 
-Dans cette partie, nous effectuons une analyse exploratoire des données annuelles.
+Cette section présente une analyse exploratoire des données annuelles sur la période étudiée.
 
+## Représentativité temporelle des sociétés.
+
+Afin d’évaluer la représentativité temporelle des sociétés, nous analysons la distribution des entreprises selon le nombre d’années pour lesquelles leurs observations sont manquantes sur la période étudiée. Cette approche permet d’apprécier le degré d’équilibre du panel et d’identifier d’éventuelles discontinuités dans la présence des sociétés au cours du temps.
+
+Pour chaque famille et nature d’assurance, le nombre d’années manquantes est calculé au niveau de chaque société comme la différence entre la longueur totale de la période d’observation (ici $10$ ans) et le nombre d’années pour lesquelles la société est effectivement observée. Les sociétés sont ensuite regroupées selon ce nombre d’années manquantes, et la part relative de chaque groupe est exprimée en pourcentage du nombre total de sociétés appartenant à la famille considérée.
+
+L’analyse graphique met ainsi en évidence les hétérogénéités de couverture temporelle entre les différentes familles, cette hétérogénéités est encore plus poussée lorsque l'analyse est faite par nature. Une proportion élevée de sociétés sans années manquantes traduit un panel relativement équilibré, suggérant une présence stable des entreprises sur l’ensemble de la période. À l’inverse, une concentration de sociétés présentant plusieurs années manquantes peut refléter des entrées ou sorties du marché, ou encore des lacunes dans la disponibilité des données, phénomènes particulièrement fréquents dans certaines familles spécifiques.
+
+Cette analyse descriptive constitue une étape préalable essentielle à l’étude économétrique ultérieure, dans la mesure où la structure du panel (équilibré ou déséquilibré) conditionne le choix des méthodes d’estimation et l’interprétation des résultats.
+
+
+### Représentativité temporelle des sociétés par famille.
 ```{r}
+# 1) Années attendues
+annees_attendues <- df %>%
+  distinct(Annee) %>%
+  arrange(Annee) %>%
+  pull(Annee)
 
-### Here we Transforme numeric variable by dividing them by 10^8 to change  their scale
+# Couples SOCIETE x Famille réellement observés (doublons supprimés)
+soc_fam <- df %>%
+  distinct(SOCIETE, Famille)
 
-num_vars <- names(df)[sapply(df, is.numeric)]
+# 2) Panel SOCIETE x Famille x Annee (uniquement pour les couples existants)
+panel <- soc_fam %>%
+  tidyr::crossing(Annee = annees_attendues) %>%
+  left_join(
+    df %>% distinct(SOCIETE, Famille, Annee) %>% mutate(present = 1L),
+    by = c("SOCIETE","Famille","Annee")
+  ) %>%
+  mutate(present = ifelse(is.na(present), 0L, 1L))
 
-num_vars <- setdiff(num_vars, c("SOCIETE","Annee", "RATIO")) 
+# 3) Nb d'années manquantes par SOCIETE et Famille
+miss_by_soc_fam <- panel %>%
+  group_by(SOCIETE, Famille) %>%
+  summarise(nb_annees_manquantes = sum(present == 0L), .groups = "drop")
 
-## function to change variables' scales
-
-divide_1e8 <- function(df, exclude = c("SOCIETE", "Annee", "RATIO")) {
-  num_vars <- names(df)[sapply(df, is.numeric)]
-  num_vars <- setdiff(num_vars, exclude)
-
-  df %>%
-    dplyr::mutate(across(all_of(num_vars), ~ . / 1e8))
-}
-
-## Spliting the dabase into two parts: annually and quarterly
-df_annual <- df %>% filter(Remise == "A")
-df_quarterly <- df %>% filter(Remise %in% c("T1", "T2", "T3", "T4"))
-
-df_annual <- divide_1e8(df_annual)
-df_quarterly <- divide_1e8(df_quarterly)
-
-
-```
-
-
-
-```{r}
-## Mean computation
-
-# numerical variable to analyse
-num_vars <- setdiff(names(df_annual)[sapply(df_annual, is.numeric)], c("SOCIETE","Annee"))
-
-# mean per years per Famille
-df_mean_famille <- df_annual %>%
-  group_by(Annee, Famille) %>%
-  summarise(across(all_of(num_vars), mean, na.rm = TRUE), .groups = "drop")
-
-# mean per years per Nature
-df_mean_nature <- df_annual %>%
-  group_by(Annee, Nature) %>%
-  summarise(across(all_of(num_vars), mean, na.rm = TRUE), .groups = "drop")
-
-```
-
-
-```{r}
-## Conversion into a time series after calculating the mean for each relevant variable, grouped by Nature and Famille.
-
-# For famille
-
-ts_famille <- list()
-
-for(v in num_vars){
-  ts_famille[[v]] <- lapply(unique(df_mean_famille$Famille), function(fam){
-    zoo(df_mean_famille[df_mean_famille$Famille == fam, v],
-        order.by = df_mean_famille$Annee[df_mean_famille$Famille == fam])
-  })
-  names(ts_famille[[v]]) <- unique(df_mean_famille$Famille)
-}
-
-## For nature
-ts_nature <- list()
-
-for(v in num_vars){
-  ts_nature[[v]] <- lapply(unique(df_mean_nature$Nature), function(nat){
-    zoo(df_mean_nature[df_mean_nature$Nature == nat, v],
-        order.by = df_mean_nature$Annee[df_mean_nature$Nature == nat])
-  })
-  names(ts_nature[[v]]) <- unique(df_mean_nature$Nature)
-}
-
-
-
-```
-
-```{r include=FALSE}
-## Average rate over the period
-df_scr <- df_mean_famille %>%
-  select(Annee, Famille, SCR) %>%
-  mutate(Annee = as.numeric(Annee))   
-
-df_scr <- df_scr %>% arrange(Famille, Annee) # sort by year and famille
-
-
-# Computation
-evol_scr <- df_scr %>%
+# 4) Distribution 0..10 + % par Famille
+dist_miss_fam <- miss_by_soc_fam %>%
+  filter(nb_annees_manquantes >= 0, nb_annees_manquantes <= 10) %>%
+  count(Famille, nb_annees_manquantes, name = "nb_societes") %>%
+  complete(Famille, nb_annees_manquantes = 0:10, fill = list(nb_societes = 0)) %>%
   group_by(Famille) %>%
-  summarise(
-    debut = first(SCR),          
-    fin = last(SCR),            
-    n = n() - 1,                
-    evol_moy_pct = ((fin / debut)^(1/n) - 1) * 100  # average rate
+  mutate(
+    total_societes = sum(nb_societes),
+    pct_societes = ifelse(total_societes == 0, 0, 100 * nb_societes / total_societes)
+  ) %>%
+  ungroup()
+
+# 5) Plot
+if (nrow(dist_miss_fam) == 0) {
+  message("Aucune observation à tracer.")
+} else {
+  ggplot(dist_miss_fam, aes(x = nb_annees_manquantes, y = pct_societes)) +
+    geom_col() +
+    facet_wrap(~ Famille, scales = "free_y") +
+    scale_x_continuous(breaks = 0:10) +
+    scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+    labs(
+      x = "Nombre d'années manquantes",
+      y = "Pourcentage de sociétés",
+      title = "Répartition des sociétés selon le nombre d'années manquantes (par Famille)"
+    )
+}
+
+```
+
+Dans chaque famille d’assurance, moins de $50 \%$ des sociétés disposent d’observations complètes sur l’ensemble de la période étudiée. En revanche, une large majorité des entreprises est observée sur au moins huit années. Afin d’assurer une comparabilité temporelle rigoureuse de l’évolution des variables d’intérêt entre les différentes familles, l’analyse est restreinte aux sociétés disposant d’au moins huit années observées sur dix.
+
+Pour les sociétés retenues, les valeurs correspondant aux années manquantes sont imputées par la moyenne des observations disponibles pour la société considérée. Cette stratégie permet de préserver la taille de l’échantillon tout en limitant les biais liés à une exclusion trop restrictive des entreprises partiellement observées
+
+###Représentativité temporelle des sociétés par Nature.
+
+```{r}
+# 1) Années attendues
+annees_attendues <- df %>%
+  distinct(Annee) %>%
+  arrange(Annee) %>%
+  pull(Annee)
+
+# Couples SOCIETE x Nature réellement observés (doublons supprimés)
+soc_nat <- df %>%
+  distinct(SOCIETE, Nature)
+
+# 2) Panel SOCIETE x Nature x Annee + indicateur présence
+panel <- soc_nat %>%
+  tidyr::crossing(Annee = annees_attendues) %>%   # crée SOCIETE x Nature x Annee seulement pour couples existants
+  left_join(
+    df %>% distinct(SOCIETE, Nature, Annee) %>% mutate(present = 1L),
+    by = c("SOCIETE", "Nature", "Annee")
+  ) %>%
+  mutate(present = ifelse(is.na(present), 0L, 1L))
+
+# 3) Nb d'années manquantes par SOCIETE et Nature
+miss_by_soc_nat <- panel %>%
+  group_by(SOCIETE, Nature) %>%
+  summarise(nb_annees_manquantes = sum(present == 0L), .groups = "drop")
+
+# 4) Distribution 0..10 + % par Nature
+dist_miss_nat <- miss_by_soc_nat %>%
+  filter(nb_annees_manquantes >= 0, nb_annees_manquantes <= 10) %>%
+  count(Nature, nb_annees_manquantes, name = "nb_societes") %>%
+  complete(Nature, nb_annees_manquantes = 0:10, fill = list(nb_societes = 0)) %>%
+  group_by(Nature) %>%
+  mutate(
+    total_societes = sum(nb_societes),
+    pct_societes = ifelse(total_societes == 0, 0, 100 * nb_societes / total_societes)
+  ) %>%
+  ungroup() %>%
+  mutate(nb_annees_manquantes = factor(nb_annees_manquantes, levels = 0:10))
+
+# 5) Plot : axe X visible sur TOUTES les facettes
+if (nrow(dist_miss_nat) == 0) {
+  message("Aucune observation à tracer.")
+} else {
+  ggplot(dist_miss_nat, aes(x = nb_annees_manquantes, y = pct_societes)) +
+    geom_col() +
+    ggh4x::facet_wrap2(~ Nature, scales = "free_y", axes = "all") +
+    scale_x_discrete(drop = FALSE) +
+    scale_y_continuous(labels = function(x) paste0(x, " %")) +
+    labs(
+      x = "Nombre d'années manquantes",
+      y = "Pourcentage de sociétés",
+      title = "Répartition des sociétés (%) selon le nombre d'années manquantes (par Nature)"
+    ) +
+    theme_minimal()
+}
+```
+Concernant la répartition par nature, l’analyse montre que 50 % des fournisseurs de services de fonds de retraite et de prévoyance sociale (FRPS) ne sont observés que sur deux années de la période étudiée. Par ailleurs, ces sociétés sont très faiblement représentées dans l’échantillon, puisqu’elles ne constituent que $0,91 \%$ de l’ensemble des entreprises observées. Dans ces conditions, il n’apparaît pas pertinent de procéder à une comparaison des variables d’intérêt  (telles que le SCR moyen, les fonds propres moyens et le ratio de solvabilité) entre cette catégorie et d’autres natures d’assurance nettement mieux représentées.
+
+Un constat similaire s’applique aux réassureurs, qui ne représentent que $2,56 \%$ de l’échantillon total. En outre, près de $50 \%$ des sociétés de cette catégorie sont observées sur moins de trois années sur les dix considérées, ce qui limite fortement la comparabilité temporelle de leurs indicateurs financiers.
+
+Pour les autres natures d’assurance, disposant d’une couverture temporelle plus satisfaisante, nous avons adopté une méthodologie analogue à celle retenue dans l’analyse par famille, en conservant les sociétés suffisamment représentées au cours du temps et en appliquant, le cas échéant, une imputation des valeurs manquantes selon les mêmes principes.
+
+
+##############
+
+### Évolution temporelle du SCR 
+
+
+```{r}
+# 1) Base annuelle
+df_annuel <- df %>%
+  filter(Remise == "A") %>%
+  mutate(Annee = as.integer(Annee)) %>%
+  distinct(SOCIETE, Famille, Nature, Annee, .keep_all = TRUE) # consever les combinaisons uniques
+
+# 2) Base trimestrielle
+df_trimestriel <- df %>%
+  filter(Remise %in% c("T1", "T2", "T3", "T4")) %>%
+  mutate(Annee = as.integer(Annee)) %>%
+  distinct(SOCIETE, Famille, Nature, Annee, Remise, .keep_all = TRUE)
+```
+
+
+```{r}
+
+
+# ============================================================
+# OBJECTIF GÉNÉRAL
+# Ce script prépare une base annuelle (Remise = "A"), harmonise les types
+# des variables d’intérêt (SCR, FONDS PROPRES, RATIO), puis définit une
+# fonction qui :
+#  (1) construit un panel complet (toutes les années) par société et par groupe
+#      (Famille ou Nature),
+#  (2) conserve uniquement les sociétés observées au moins 8 années,
+#  (3) impute les années manquantes par la moyenne de la société.
+# ============================================================
+
+library(dplyr)
+library(tidyr)
+library(rlang)
+
+# ------------------------------------------------------------
+# PARTIE 1 — Nettoyage des types (années et variables quantitatives)
+# Rôle : garantir que l’année et les variables d’intérêt sont numériques
+# afin de pouvoir calculer des moyennes et tracer des séries temporelles.
+# ------------------------------------------------------------
+df_annuel <- df_annuel %>%
+  mutate(
+    Annee = as.integer(Annee),
+    SCR = as.numeric(SCR),
+    `FONDS PROPRES` = as.numeric(`FONDS PROPRES`),
+    RATIO = as.numeric(RATIO)
   )
 
-evol_scr
+# ------------------------------------------------------------
+# PARTIE 2 — Définition de la période d’étude (liste des années)
+# Rôle : récupérer la liste des années de référence. Elle servira à créer
+# un panel complet (toutes les années) et donc à repérer les années manquantes.
+# ------------------------------------------------------------
+annees_attendues <- df_annuel %>%
+  distinct(Annee) %>%
+  arrange(Annee) %>%
+  pull(Annee)
+
+# ------------------------------------------------------------
+# PARTIE 3 — Fonction de construction du panel, filtrage et imputation
+# Rôle : produire une base “panel” par SOCIETE × (Famille ou Nature) × Année.
+# Étapes internes :
+#  1) créer toutes les années pour chaque couple SOCIETE × groupe observé,
+#  2) joindre les valeurs observées (NA si année manquante),
+#  3) garder les sociétés observées au moins min_years années (par défaut 8),
+#  4) imputer SCR / Fonds propres / Ratio manquants par la moyenne de la société
+#     (au sein du groupe considéré).
+# ------------------------------------------------------------
+make_panel_imp <- function(dfA, group_var, min_years = 8) {
+  group_var <- rlang::ensym(group_var)
+
+  # (3.1) Couples SOCIETE × groupe réellement observés
+  # Rôle : éviter de créer des combinaisons artificielles (société dans un groupe
+  # où elle n’existe jamais).
+  couples <- dfA %>% distinct(SOCIETE, !!group_var)
+
+  # (3.2) Construction du panel complet sur toutes les années
+  # Rôle : forcer la présence de toutes les années ; les années absentes deviendront NA
+  # après la jointure.
+  panel <- couples %>%
+    crossing(Annee = annees_attendues) %>%
+    left_join(
+      dfA %>%
+        select(SOCIETE, !!group_var, Annee, SCR, `FONDS PROPRES`, RATIO),
+      by = c("SOCIETE", rlang::as_string(group_var), "Annee")
+    )
+
+  # (3.3) Filtrage : conserver uniquement les sociétés suffisamment suivies dans le temps
+  # Rôle : garder les sociétés représentées au moins min_years années (ex. 8/10),
+  # pour assurer une comparaison temporelle fiable.
+  keep <- panel %>%
+    group_by(SOCIETE, !!group_var) %>%
+    summarise(nb_annees_obs = sum(!is.na(SCR)), .groups = "drop") %>%
+    filter(nb_annees_obs >= min_years)
+
+  # (3.4) Imputation : remplacer les NA par la moyenne de la société
+  # Rôle : compléter les années manquantes sans créer de tendance artificielle :
+  # on conserve le niveau moyen propre à chaque société.
+  panel %>%
+    semi_join(keep, by = c("SOCIETE", rlang::as_string(group_var))) %>%
+    group_by(SOCIETE, !!group_var) %>%
+    mutate(
+      SCR_imp = ifelse(is.na(SCR), mean(SCR, na.rm = TRUE), SCR),
+      FP_imp  = ifelse(is.na(`FONDS PROPRES`), mean(`FONDS PROPRES`, na.rm = TRUE), `FONDS PROPRES`),
+      RATIO_imp = ifelse(is.na(RATIO), mean(RATIO, na.rm = TRUE), RATIO)
+    ) %>%
+    ungroup()
+}
 
 ```
+
 
 ```{r}
+# ============================================================
+# PARTIE A — Analyse par FAMILLE
+# Objectif : 
+# 1) Construire un panel annuel par SOCIETE × Famille,
+# 2) Conserver uniquement les sociétés observées au moins 8 années,
+# 3) Imputer les années manquantes par la moyenne propre à chaque société,
+# 4) Calculer l’évolution annuelle moyenne des variables d’intérêt par Famille.
+# ============================================================
 
-ggplot(df_scr, aes(x = Annee, y = SCR, color = Famille)) +
-  geom_line(size = 1.2) +    
-  geom_point(size = 2) +     
-  labs(title = "Évolution temporelle du SCR moyen par Famille",
-       x = "Année", y = "SCR") +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
+# Construction du panel imputé par Famille
+# (le filtrage ≥ 8 ans et l’imputation sont réalisés par la fonction make_panel_imp)
+panel_fam_imp <- make_panel_imp(df_annuel, Famille, min_years = 8)
+
+# Calcul des moyennes annuelles par Famille
+# Ces moyennes représentent l’évolution agrégée inter-sociétés
+moy_fam <- panel_fam_imp %>%
+  group_by(Famille, Annee) %>%
+  summarise(
+    SCR_moy   = mean(SCR_imp, na.rm = TRUE),
+    FP_moy    = mean(FP_imp, na.rm = TRUE),
+    RATIO_moy = mean(RATIO_imp, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 
+
+# ============================================================
+# PARTIE B — Analyse par NATURE
+# Objectif :
+# 1) Construire un panel annuel par SOCIETE × Nature,
+# 2) Appliquer le même critère de représentativité temporelle (≥ 8 ans),
+# 3) Imputer les années manquantes par la moyenne de la société,
+# 4) Comparer l’évolution moyenne des indicateurs par Nature.
+# ============================================================
+
+# Construction du panel imputé par Nature
+panel_nat_imp <- make_panel_imp(df_annuel, Nature, min_years = 8)
+
+# Calcul des moyennes annuelles par Nature
+# Ces séries temporelles permettent de comparer les dynamiques moyennes
+# entre les différentes natures d’assurance
+moy_nat <- panel_nat_imp %>%
+  group_by(Nature, Annee) %>%
+  summarise(
+    SCR_moy   = mean(SCR_imp, na.rm = TRUE),
+    FP_moy    = mean(FP_imp, na.rm = TRUE),
+    RATIO_moy = mean(RATIO_imp, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 ```
 
 
-Le capital de solvabilité requis connaît une tendance à la croissance sur la période 2016-2024, ce qui peut traduire soit une augmentation du niveau d’activité des compagnies d’assurance, soit une orientation croissante de leurs portefeuilles vers des actifs risqués. Cette hausse est  marquée chez les entreprises traditionnelles d’assurance par  une évolution moyenne de $7,3 \%$ contre $4,7 \%$ chez les bancassureurs  et $3,33\%$ pour les mutualistes.
 
-Il convient également de noter que les bancassureurs et les compagnies d’assurance traditionnelles présentent, en moyenne, un ratio de solvabilité relativement plus élevé. 
+
 
 ```{r}
-df_ratio <- df_mean_famille %>%
-  select(Annee, Famille, RATIO) %>%
-  mutate(Annee = as.numeric(Annee))   
+# ============================================================
+# FONCTION DE VISUALISATION DES ÉVOLUTIONS TEMPORELLES
+# Objectif :
+# - Produire un graphique individuel et lisible de l’évolution annuelle
+#   d’une variable d’intérêt (SCR, Fonds propres, Ratio),
+# - Comparer les trajectoires moyennes entre groupes (Famille ou Nature),
+# - Garantir une présentation homogène et "publication-ready".
+# ============================================================
 
-df_ratio <- df_ratio %>% arrange(Famille, Annee) # sort by year and famille
+plot_evo <- function(data, grp, y, titre, ylab, subtitle = NULL) {
 
-library(ggplot2)
+  # ----------------------------------------------------------
+  # Construction du graphique de base
+  # - Axe X : Année
+  # - Axe Y : variable d’intérêt (choisie dynamiquement)
+  # - Une courbe par groupe (Famille ou Nature)
+  # ----------------------------------------------------------
+  ggplot(
+    data,
+    aes(
+      x = Annee,
+      y = .data[[y]],
+      group = .data[[grp]],
+      color = .data[[grp]]
+    )
+  ) +
 
-ggplot(df_ratio, aes(x = Annee, y = RATIO, color = Famille)) +
-  geom_line(size = 1.2) +    
-  geom_point(size = 2) +     
-  labs(title = "Évolution temporelle du RATIO moyen par Famille",
-       x = "Année", y = "RATIO") +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
+    # --------------------------------------------------------
+    # Tracé des courbes d’évolution
+    # - geom_line : met en évidence la tendance temporelle
+    # - linewidth renforcé pour une meilleure lisibilité
+    # --------------------------------------------------------
+    geom_line(linewidth = 1.2) +
+
+    # --------------------------------------------------------
+    # Ajout de points sur chaque année observée
+    # - Permet de visualiser les valeurs annuelles effectives
+    # --------------------------------------------------------
+    geom_point(size = 2) +
+
+    # --------------------------------------------------------
+    # Graduation de l’axe des années
+    # - Affiche explicitement toutes les années de la période
+    # --------------------------------------------------------
+    scale_x_continuous(breaks = sort(unique(data$Annee))) +
+
+    # --------------------------------------------------------
+    # Titres et légendes
+    # - Titre principal : variable étudiée
+    # - Subtitle : information méthodologique optionnelle
+    # - Légende couleur : Famille ou Nature
+    # --------------------------------------------------------
+    labs(
+      title = titre,
+      subtitle = subtitle,
+      x = "Année",
+      y = ylab,
+      color = rlang::as_label(rlang::sym(grp))
+    ) +
+
+    # --------------------------------------------------------
+    # Thème graphique
+    # - theme_minimal : rendu sobre et académique
+    # - Taille de base augmentée pour la lisibilité
+    # --------------------------------------------------------
+    theme_minimal(base_size = 14) +
+
+    # --------------------------------------------------------
+    # Ajustements esthétiques finaux
+    # - Titre en gras
+    # - Légende positionnée en bas (standard académique)
+    # - Suppression des grilles secondaires pour alléger la figure
+    # --------------------------------------------------------
+    theme(
+      plot.title = element_text(face = "bold"),
+      legend.position = "bottom",
+      legend.title = element_text(face = "bold"),
+      panel.grid.minor = element_blank()
+    )
+}
 
 ```
 
-Le ratio de solvabilité moyen des différentes familles reste supérieur à $2 \%$ sur l’ensemble de la période. Il est même relativement plus élevé chez les mutualistes, se maintenant constamment au‑dessus de $3,5 \%$. Cette observation s’expliquerait par le fait que ces derniers sont moins exposés au risque, comparativement aux bancassureurs et aux sociétés d’assurance traditionnelles, comme le confirme l’analyse précédente.
+
+```{r}
+# ============================================================
+# VISUALISATION — ÉVOLUTION DES INDICATEURS PAR FAMILLE
+# Objectif :
+# - Représenter graphiquement l’évolution annuelle moyenne
+#   des principaux indicateurs de solvabilité par Famille,
+# - Faciliter la comparaison des dynamiques temporelles entre familles.
+# ============================================================
+
+# Évolution du SCR moyen par Famille
+p_scr_fam <- plot_evo(
+  moy_fam, "Famille", "SCR_moy",
+  "Évolution temporelle du SCR (valeur annuelle)",
+  "SCR"
+)
+
+# Évolution des Fonds propres moyens par Famille
+p_fp_fam <- plot_evo(
+  moy_fam, "Famille", "FP_moy",
+  "Évolution temporelle des Fonds propres (valeur annuelle)",
+  "Fonds propres"
+)
+
+# Évolution du ratio de solvabilité moyen par Famille
+p_ratio_fam <- plot_evo(
+  moy_fam, "Famille", "RATIO_moy",
+  "Évolution temporelle du ratio de solvabilité (valeur annuelle)",
+  "Ratio de solvabilité"
+)
+
+# Affichage des graphiques par Famille
+p_scr_fam
+p_fp_fam
+p_ratio_fam
+
+
+```
+
+
+```{r}
+# ============================================================
+# VISUALISATION — ÉVOLUTION DES INDICATEURS PAR NATURE
+# Objectif :
+# - Appliquer la même analyse graphique au niveau des Natures d’assurance,
+# - Comparer les trajectoires moyennes des indicateurs entre catégories.
+# ============================================================
+
+# Évolution du SCR moyen par Nature
+p_scr_nat <- plot_evo(
+  moy_nat, "Nature", "SCR_moy",
+  "Évolution temporelle du SCR (valeur annuelle)",
+  "SCR"
+)
+
+# Évolution des Fonds propres moyens par Nature
+p_fp_nat <- plot_evo(
+  moy_nat, "Nature", "FP_moy",
+  "Évolution temporelle des Fonds propres (valeur annuelle)",
+  "Fonds propres"
+)
+
+# Évolution du ratio de solvabilité moyen par Nature
+p_ratio_nat <- plot_evo(
+  moy_nat, "Nature", "RATIO_moy",
+  "Évolution temporelle du ratio de solvabilité (valeur annuelle)",
+  "Ratio de solvabilité"
+)
+
+# Affichage des graphiques par Nature
+p_scr_nat
+p_fp_nat
+p_ratio_nat
+
+
+```
+
+#################################
+
+
