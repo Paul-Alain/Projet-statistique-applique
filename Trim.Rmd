@@ -1,0 +1,673 @@
+---
+title: "Analyses Trimestrielles"
+subtitle: "Projet StatApp"
+date: 
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+    highlight: tango
+    df_print: kable
+header-includes:
+  - \usepackage[french]{babel}
+  - \usepackage{geometry}
+  - \geometry{margin=2.5cm}
+  - \usepackage{xcolor}
+  - \definecolor{darkblue}{RGB}{0, 51, 102}
+  - \usepackage{sectsty}
+  - \sectionfont{\color{darkblue}}
+  - \subsectionfont{\color{darkblue}}
+  - \usepackage{titling}
+  - \pretitle{\begin{center}\LARGE\bfseries\color{darkblue}}
+  - \posttitle{\end{center}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(tidyr)
+library(patchwork)
+library(rlang)
+```
+
+```{r}
+df <- readRDS("C:\\Users\\7king\\Desktop\\Stat app\\BASE_SCR_ENSAE_ANONYME.rds")
+df$Annee <- as.numeric(df$Annee)
+
+df_clean <- df %>%
+  mutate(
+    Trimestre = case_when(
+      Remise == "T1" ~ Annee + 0.00 ,
+      Remise == "T2" ~ Annee + 0.25,
+      Remise == "T3" ~ Annee + 0.50,
+      Remise == "T4" ~ Annee + 0.75,
+      TRUE ~ Annee
+    )
+  )
+# Séparation des données annuelles et trimestrielles
+df_annual <- df_clean[df_clean$Remise == "A", ]
+df_quarterly <- df_clean[df_clean$Remise %in% c("T1","T2","T3","T4"),]
+
+# Ajout des Trimestres manquants 
+
+toutes_societes <- union(unique(df_quarterly$SOCIETE), unique(df_annual$SOCIETE))
+
+# 2. Calcul des bornes de temps PAR SOCIETE (en utilisant Annuel ET Trimestriel)
+# C'est ici que se joue la survie des entreprises sans trimestres
+bornes_societes <- data.frame(SOCIETE = toutes_societes) %>%
+  left_join(
+    df_quarterly %>% group_by(SOCIETE) %>% 
+      summarise(t_min_q = min(Trimestre, na.rm = TRUE), 
+                t_max_q = max(Trimestre, na.rm = TRUE), .groups = "drop"),
+    by = "SOCIETE"
+  ) %>%
+  left_join(
+    df_annual %>% group_by(SOCIETE) %>% 
+      summarise(t_min_a = min(Annee, na.rm = TRUE), 
+                t_max_a = max(Annee, na.rm = TRUE), .groups = "drop"),
+    by = "SOCIETE"
+  ) %>%
+  mutate(
+    # On prend le min des deux sources. Si pas de trimestres, on prend l'année (ex: 2018.00)
+    Trimestre_deb = pmin(t_min_q, t_min_a, na.rm = TRUE),
+    # On prend le max des deux sources. Si pas de trimestres, on prend l'année + 0.75
+    Trimestre_fin = pmax(t_max_q, t_max_a + 0.75, na.rm = TRUE)
+  ) %>%
+  select(SOCIETE, Trimestre_deb, Trimestre_fin)
+
+# 3. Grille complète
+grille_complete <- expand_grid(
+  Annee = 2016:2025, 
+  Remise = c("T1", "T2", "T3", "T4"),
+  SOCIETE = toutes_societes
+) %>%
+mutate(
+  Trimestre = case_when(
+    Remise == "T1" ~ Annee + 0.00,
+    Remise == "T2" ~ Annee + 0.25,
+    Remise == "T3" ~ Annee + 0.50,
+    Remise == "T4" ~ Annee + 0.75 
+  )
+)
+
+# 4. Fusion finale
+referentiel_societes <- bind_rows(
+  df_quarterly %>% select(SOCIETE, Nature, Famille),
+  df_annual %>% select(SOCIETE, Nature, Famille)
+) %>%
+  filter(!is.na(Nature)) %>% # On ne garde que ce qui est renseigné
+  distinct(SOCIETE, .keep_all = TRUE) # Une seule ligne par société
+
+# 2. Construction de la grille propre
+df_quarterly_complet <- grille_complete %>%
+  # On joint d'abord le référentiel pour garantir Nature/Famille partout
+  left_join(referentiel_societes, by = "SOCIETE") %>%
+  # On joint les bornes temporelles
+  left_join(bornes_societes, by = "SOCIETE") %>%
+  # On joint les données réelles de SCR
+  left_join(
+    df_quarterly %>% select(Remise, Trimestre, Annee, SOCIETE, SCR, `FONDS PROPRES`, RATIO), 
+    by = c("Remise", "Trimestre", "Annee", "SOCIETE")
+  )%>%
+  filter(Trimestre >= Trimestre_deb)%>%
+  filter(Trimestre <= Trimestre_fin)%>%
+  filter(!(Annee ==2025 & Remise == "T4"))
+
+```
+\newpage
+
+# 4.3 Analyses trimestrielles
+
+## 4.3.1 Statistiques descriptives
+
+Pour toutes les analyses qui suivent, nous ne prendrons en compte que deux natures de sociétés: 
+
+- Non Vie;
+- Vie (regroupant les natures **Vie/Capitalisation** et **Mixte**).
+
+```{r}
+evol <- df_quarterly %>%
+  mutate(Nature_Group = case_when(
+    Nature %in% c("Vie/Capitalisation", "Mixte") ~ "Vie",
+    Nature == "Non Vie" ~ "Non Vie",
+    TRUE ~ NA_character_ # Exclut les autres natures s'il y en a
+  )) %>%
+  # On ne garde que les lignes qui correspondent à nos deux groupes
+  filter(!is.na(Nature_Group)) %>%
+  group_by(Nature_Group, Trimestre) %>%
+  summarise(SCR_Moyen = mean(SCR, na.rm = TRUE),
+            FONDS_PROPRES_Moyen = mean(`FONDS PROPRES`, na.rm = TRUE), 
+            Ratio_Moyen = sum(`FONDS PROPRES`, na.rm = TRUE)/sum(SCR, na.rm = TRUE), 
+            .groups = "drop")
+
+
+ev <- df_annual %>%
+  mutate(Nature_Group = case_when(
+    Nature %in% c("Vie/Capitalisation", "Mixte") ~ "Vie",
+    Nature == "Non Vie" ~ "Non Vie",
+    TRUE ~ NA_character_ # Exclut les autres natures s'il y en a
+  )) %>%
+  # On ne garde que les lignes qui correspondent à nos deux groupes
+  filter(!is.na(Nature_Group)) %>%
+  group_by(Nature_Group, Annee) %>%
+  summarise(SCR_Moyen = mean(SCR, na.rm = TRUE),
+            FONDS_PROPRES_Moyen = mean(`FONDS PROPRES`, na.rm = TRUE), 
+            Ratio_Moyen = sum(`FONDS PROPRES`, na.rm = TRUE)/sum(SCR, na.rm = TRUE), 
+            .groups = "drop")
+```
+La base de données contient `r length(df_quarterly$SOCIETE)` trimestres avec des variables cibles déclarées. Nous pouvons donc observer l'évolution moyenne du SCR, des Fonds propres et du ratio de solvabilité avec les données disponibles.
+
+  (i) **Capital requis de solvabilité**
+  
+```{r}
+
+ggplot(data = evol, aes(x = Trimestre, y= SCR_Moyen/1000000))+
+  geom_line(aes(linetype = "Trimestrielle"), color = "#3cc8e7")+
+  geom_point(size = 1.2, color = "#3cc8e7")+
+  
+  geom_line(data = ev, aes(x= Annee, y = SCR_Moyen/1000000
+                 , linetype = "Annuelle" ), linewidth = 1, color = "#e74c3c" )+
+  geom_point(data = ev, aes(x= Annee, y = SCR_Moyen/1000000), size = 1.2, color = "#e74c3c" )+
+  
+    # Personnalisation des couleurs pour bien distinguer les deux groupes
+  #scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+  scale_linetype_manual(values = c("Trimestrielle" =  "solid", "Annuelle" = "dotted"))+
+  scale_x_continuous(breaks = seq(2016, 2025, by = 2), 
+                     labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+  labs(
+  title = "Évolution du SCR Moyen par nature",
+  x = "Annee",
+  y = "SCR Moyen (M€)",
+  linetype = "Fréquence : "
+  ) +
+  theme_minimal()+
+theme(legend.position = "bottom") +
+facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
+```
+Les sociétés d'assurances non vie ont un niveau de SCR moyen bien en-dessous du SCR moyen des sociétés d'assurances Vie (un écart minimal d'environ **750 millions d'euros** entre les deux courbes). Le SCR moyen trimestriel des sociétés non vie est stable et présente une faible tendance haussière alors que celui des sociétés d'assurances vie varie avec beaucoup plus d'amplitude et autour d'une valeur moyenne d'environ  **2 milliards d'euros**.
+Entre 2016 et 2025, les sociétés d'assurances vie et non vie de l'échantillon présentent globalement un niveau du SCR annuel beaucoup plus faible que le niveau moyen trimestriel. Aussi on constate que  le niveau de SCR moyen annuel est plus stable que le SCR moyen trimestriel.
+Cet écart suggère que l'échantillon des sociétés reportant trimestriellement comprend probablement des acteurs de plus grande taille que l'échantillon annuel global.
+
+  (ii) **Fonds Propres**
+
+```{r}
+ggplot(data = evol, aes(x = Trimestre, y= FONDS_PROPRES_Moyen/1000000))+
+geom_line(aes(linetype = "Trimestrielle"), color = "#3cc8e7")+
+geom_point(size = 1.2, color = "#3cc8e7")+
+
+geom_line(data = ev, aes(x= Annee, y = FONDS_PROPRES_Moyen/1000000
+               , linetype = "Annuelle" ), linewidth = 1, color = "#e74c3c" )+
+geom_point(data = ev, aes(x= Annee, y = FONDS_PROPRES_Moyen/1000000), size = 1.2, color = "#e74c3c" )+
+
+  # Personnalisation des couleurs pour bien distinguer les deux groupes
+#scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+scale_linetype_manual(values = c("Trimestrielle" =  "solid", "Annuelle" = "dotted"))+
+scale_x_continuous(breaks = seq(2016, 2025, by = 2), 
+                   labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+labs(
+title = "Évolution du fonds propres moyens par nature",
+x = "Annee",
+y = "Fonds propres Moyens (M€)",
+linetype = "Fréquence : "
+) +
+theme_minimal()+
+theme(legend.position = "bottom") +
+facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
+
+```
+
+Encore une fois, il y a un gap net entre les valeurs annuelles et les valeurs trimestrielles tant dans les sociétés d'assurances non vie que dans les sociétés vie.
+Tout comme le SCR moyen, les fonds propres moyens trimestriels des sociétés d'assurances  vie varient avec beaucoup plus d'amplitude que les fonds propres moyens trimestriels des sociétés d'assurances non vie. Les deux courbes ont également un grand fossé qui les sépare. 
+Les fonds propres moyens des sociétés vie et non vie semblent avoir tous deux une faible tendance haussière. Ce qui suggère que les sociétés d'assurances vie et non vie de notre échantillon semblent accumuler au cours du temps de plus en plus de fonds propres malgré des déviations temporelles.
+
+  (iii) **Ratio de solvabilité**
+
+```{r}
+ggplot(data = evol, aes(x = Trimestre, y= Ratio_Moyen))+
+geom_line(aes(linetype = "Trimestrielle"), color = "#3cc8e7")+
+geom_point(size = 1.2, color = "#3cc8e7")+
+
+geom_line(data = ev, aes(x= Annee, y = Ratio_Moyen
+               , linetype = "Annuelle" ), linewidth = 1, color = "#e74c3c" )+
+geom_point(data = ev, aes(x= Annee, y = Ratio_Moyen), size = 1.2, color = "#e74c3c" )+
+
+  # Personnalisation des couleurs pour bien distinguer les deux groupes
+#scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+scale_linetype_manual(values = c("Trimestrielle" =  "solid", "Annuelle" = "dotted"))+
+scale_x_continuous(breaks = seq(2016, 2025, by = 2), 
+                   labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+labs(
+title = "Évolution du Ratio moyen de solvabilité par nature",
+x = "Annee",
+y = "Ratio moyens de solvabilité",
+linetype = "Fréquence : "
+) +
+theme_minimal()+
+theme(legend.position = "bottom") +
+facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
+```
+Le ratio moyen de solvabilité trimestriel apporte plus d'information sur les variations qu'ont connues les sociétés d'assurance au cours de l'année. On constate donc que le ratio de solvabilité moyen des sociétés oscille avec beaucoup plus d'amplitude que les données annuelles ne le laissent entrevoir. 
+Le ratio moyen trimestriel des sociétés Non Vie varie avec une tendance légèrement baissière  entre **320$\%$** et **250$\%$ **. Il y a également une volatilité qui est décroissante dans le temps.
+Quant au ratio trimestriel moyen des sociétés d'assurances Vie, il est globalement plus faible que celui des sociétés non vie évoluant entre **160$\%$** et **260$\%$**. 
+Entre 2018 et 2020, on remarque une désynchronisation très forte entre le ratio moyen annuel et trimestriel des sociétés d'assurances vie. 
+
+      Décalage des séries trimestrielles et annuelles
+
+A la suite de toutes ces analyses, il en ressort un problème récurrent de décalage entre les données Trimestrielles et les données annuelles. Une piste de réponse à ces décalages est que, ces graphiques sont faits en ne prenant en compte que les valeurs trimestrielles déclarées par les sociétés. Mais nous remarquons que toutes les sociétés ne déclarent pas des données trimestrielles. En effet, seulement **`r length(unique(df_quarterly$SOCIETE)) `** sociétés présentes dans la base de données ont au moins une valeur trimestrielle dans la base de données. Ce qui représente environ **`r round(length(unique(df_quarterly$SOCIETE))*100/length(unique(df_quarterly_complet$SOCIETE)),2)`$\%$** de toutes les sociétés de la base de données. La divergence entre les moyennes annuelles et trimestrielles pourrait donc s'expliquer par le fait que les sociétés qui ne déclarent pas les données trimestrielles ont des niveaux de SCR et de Fonds propres annuels plus faibles que la moyenne. Ce qui tire la moyenne globale annuelle vers le bas et crée ce décalage avec les séries trimestrielles.
+
+## 4.2.2 Traitement des valeurs manquantes
+
+L'objectif est d'estimer les valeurs trimestrielles manquantes pour des entreprises dont nous possédons :
+1.  Les valeurs **annuelles**.
+2.  Des **déclarations trimestrielles incomplètes** après la date de création de l'entreprise (nous supposons que c'est la première année ou le premier trimestre d'apparition de l'entreprise dans la base de données). 
+```{r}
+# affichage du nombre de trimestre manquant
+
+tab_contingence <- df_quarterly_complet %>%
+  filter(is.na(SCR)) %>%
+  # Nettoyage du libellé des trimestres
+  mutate(Remise = paste0("Trimestre ", substring(Remise, 2))) %>%
+  # Comptage par Nature et par Trimestre
+  group_by(Nature, Remise) %>%
+  summarise(Valeur = n(), .groups = "drop") %>%
+  # Basculement en format large (Contingence)
+  pivot_wider(names_from = Remise, values_from = Valeur, values_fill = 0) %>%
+  # Calcul du Total par ligne (Nature)
+  rowwise() %>%
+  mutate(Total = sum(c_across(where(is.numeric)), na.rm = TRUE)) %>%
+  ungroup()%>%
+  arrange( desc(`Trimestre 1`))%>%
+  # 2. AJOUT : Calcul du Total par colonne (Ligne finale)
+  bind_rows(
+    summarise(., 
+              Nature = "Total", 
+              across(where(is.numeric), sum))
+  )
+# 3. Affichage optimisé avec kable
+tab_contingence %>%
+  kable(align = "c", caption = "Répartition des données manquantes" ,escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+  # Mise en gras de la dernière ligne (Total général)
+  row_spec(nrow(tab_contingence), bold = TRUE, background = "#f9f9f9") %>%
+  # Mise en gras de la dernière colonne (Total ligne)
+  column_spec(ncol(tab_contingence), bold = TRUE)
+  #add_header_above(c(" " = 1, "Répartition des données manquantes" = (ncol(tab_contingence) - 1)))
+
+```
+  Il y a donc **`r last(tab_contingence$Total) `**  trimestres à imputer ce qui représente **`r round(last(tab_contingence$Total)*100/length(df_quarterly_complet$Trimestre),2)` $\%$** de la base de données. Ces valeurs trimestrielles manquantes concernent majoritairement les sociétés d'assurances **Non Vie** qui cumulent à elles seules **`r round(tab_contingence$Total[tab_contingence$Nature == "Non Vie"]*100 /last(tab_contingence$Total),2)`$\%$** des données manquantes.
+
+### 4.3.2.1 Méthodologie d'imputation
+
+La méthode d'imputation repose sur le calcul du **taux de croissance moyen par nature**, calculé entre chaque trimestre et la valeur annuelle correspondante. Ces taux de croissance moyens sont utilisés pour calculer les valeurs trimestrielles manquantes à partir des valeurs annuelles.
+  
+Le taux de croissance moyen utilisé pour l'imputation est la moyenne par Nature du taux de croissance individuel de chaque société d'un trimestre à la valeur annuelle de la même année.
+Supposons que le SCR du trimestre i de l'année t de la société $j_0$ n'est pas déclaré ( $SCR^{j_0}_{T_{i,t}} = NA$ ) mais avec le SCR de l'année t déclaré ( $SCR^{j_0}_{A_t}$ donné).
+Alors :
+
+$$ SCR^{j_0}_{T_{i,t}} = \frac{SCR^{j_0}_{A_t} }{1+\tau_{moyen_{i,t}}} $$ 
+avec $$ \tau_{moyen_{i,t}} = \frac{1}{n} \sum_{j \in N_{j_0}} \frac{SCR^j_{A_t}- SCR^j_{T_{i,t}}}{SCR^j_{T_{i,t}}} $$
+
+où $N_{j_0}$ est l'ensemble des sociétés de même **nature** que la société **$j_0$** et $n = Card(N_{j_0})$.
+
+Par la formule de $\tau_{moyen_{i,t}}$ ci-dessus, on peut ainsi construire un taux de croissance pour chaque triplet nature - Trimestre - année. Le tableau suivant nous donne les résultats obtenus pour les sociétés **Non Vie** au **premier trimestre (T1)** de 2016 à 2022.
+
+```{r}
+df_quarterly_sub <- df_quarterly %>% filter(Nature == "Non Vie")
+    df_annual_sub    <- df_annual %>% filter(Nature == "Non Vie")
+stats_annuelles <- df_annual_sub %>%
+        select(Annee, SOCIETE, Val_Annuelle = SCR)
+
+    # 2. Calcul des taux individuels (par entreprise)
+    taux_individuels <- df_quarterly_sub %>%
+    # On joint sur l'Année ET l'Identifiant de l'entreprise
+    inner_join(stats_annuelles, by = c("Annee", "SOCIETE")) %>%
+
+    # On s'assure que la valeur trimestrielle est bien numérique
+    mutate(Val_Trim = SCR) %>%
+
+    # Calcul du taux d'évolution pour cette entreprise spécifique
+    mutate(Taux_Evol_Ent = Val_Annuelle / Val_Trim -1)
+
+    # 3. Calcul de la moyenne annuelle (Aggrégation finale)
+    ratios_croissance <- taux_individuels %>%
+    group_by(Annee, Remise) %>% 
+    mutate(
+        Moyenne_Taux_Evolution = mean(Taux_Evol_Ent, na.rm = TRUE),
+        #Median_Taux_Evolution = median(Taux_Evol_Ent, na.rm = TRUE), # Souvent plus robuste que la moyenne
+        )%>%
+        select(Annee, Remise, Moyenne_Taux_Evolution) %>% distinct()
+    
+taux <- ratios_croissance%>%
+  filter(Remise == "T1")%>%
+  ungroup()%>%
+  select(Annee, Moyenne_Taux_Evolution)
+
+# 2. Affichage avec kable
+taux %>% 
+  arrange(Annee) %>%
+  kable(align = "c", caption = "Taux de croissance du SCR pour les entreprises Non Vie du trimestre 1 à la valeur annuelle" ,digits = 4) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  row_spec(which(sort(taux$Annee) == 2021), bold = TRUE, color = "black")
+  #add_header_above(c("Taux de croissance du SCR pour les entreprises Non Vie du trimestre 1 à la valeur annuelle" = ncol(taux)))
+
+```
+
+On constate, par exemple, qu'en 2021, les sociétés Non Vie ont connu une croissance moyenne de **`r round(taux$Moyenne_Taux_Evolution[taux$Annee == 2021]*100,2)`$\%$** de leur capital requis de solvabilité entre le premier trimestre et la fin de l'année 2021.
+
+### 4.3.2.2 Visualisation de l'imputation
+```{r function_def}
+imputer_masse_variables <- function(df_quarterly, df_annual, natures, variables) {
+  
+  # ---------------------------------------------------------
+  # 1. Filtrage initial 
+  # ---------------------------------------------------------
+  # Si aucune liste de nature n'est fournie, on prend tout.
+  # Sinon, on filtre sur les natures demandées.
+  
+  if (!is.null(natures)) {
+    df_q_work <- df_quarterly %>% filter(Nature %in% natures)
+    df_a_work <- df_annual %>% filter(Nature %in% natures)
+  } else {
+    df_q_work <- df_quarterly
+    df_a_work <- df_annual
+  }
+  
+  # Sécurité : Vérifier s'il reste des données
+  if(nrow(df_q_work) == 0 || nrow(df_a_work) == 0) {
+    warning("Aucune donnée trouvée pour les natures spécifiées.")
+    return(NULL)
+  }
+  
+  # ---------------------------------------------------------
+  # 2. Boucle sur chaque variable cible
+  # ---------------------------------------------------------
+  
+  for (var_cible in variables) {
+    
+    message(paste("Traitement de l'imputation pour :", var_cible))
+    
+    # Vérification que la variable existe dans les deux bases
+    if (!var_cible %in% names(df_q_work) || !var_cible %in% names(df_a_work)) {
+      warning(paste("La variable", var_cible, "est absente d'une des bases. Passage à la suivante."))
+      next
+    }
+    
+    # --- A. Préparation des données Annuelles pour cette variable ---
+    stats_annuelles <- df_a_work %>%
+      select(Annee, SOCIETE, Nature, Val_Annuelle = .data[[var_cible]])
+    
+    # --- B. Calcul des Ratios (Sur les données complètes uniquement) ---
+    # On cherche les cas où on a le Trimestre ET l'Année pour calculer le profil
+    
+    donnees_completes <- df_q_work %>%
+      select(Annee, SOCIETE, Nature, Remise, Val_Trim = .data[[var_cible]]) %>%
+      filter(!is.na(Val_Trim)) %>%
+      inner_join(stats_annuelles, by = c("Annee", "SOCIETE", "Nature"))
+    
+    # Calcul des coefficients moyens par groupe (Nature / Année / Remise)
+    ratios_reference <- donnees_completes %>%
+      mutate(Ratio_Individuel = (Val_Annuelle / Val_Trim) - 1) %>%
+      # ! IMPORTANT : On group_by aussi par NATURE pour ne pas mélanger les profils
+      group_by(Annee, Remise, Nature) %>%
+      summarise(
+        Moyenne_Ratio = mean(Ratio_Individuel, na.rm = TRUE),
+        .groups = "drop"
+      )
+    
+    # --- C. Imputation ---
+    
+    # 1. On joint la valeur annuelle spécifique à la société
+    # 2. On joint le Ratio moyen du groupe (Année/Remise/Nature)
+    
+    df_q_work <- df_q_work %>%
+      left_join(stats_annuelles, by = c("Annee", "SOCIETE", "Nature")) %>%
+      left_join(ratios_reference, by = c("Annee", "Remise", "Nature")) %>%
+      mutate(
+        # Création du flag (1 si imputé, 0 sinon)
+        !!paste0("Flag_Imputation_", var_cible) := ifelse(is.na(.data[[var_cible]]), TRUE, FALSE),
+        
+        # Application de la formule : Trim = Annuel / Ratio Moyen
+        !!sym(var_cible) := ifelse(
+          is.na(.data[[var_cible]]) & !is.na(Val_Annuelle) & !is.na(Moyenne_Ratio),
+          Val_Annuelle / (Moyenne_Ratio+1),
+          .data[[var_cible]]
+        )
+      ) %>%
+      # Nettoyage des colonnes temporaires créées par les jointures pour ce tour de boucle
+      select(-any_of(c("Val_Annuelle", "Moyenne_Ratio")))
+  }
+  
+  # Retourne le dataframe complet avec toutes les variables traitées
+  return(df_q_work)
+
+}
+```
+
+
+Nous imputons donc le SCR et les fonds propres par la méthode définie plus haut. Le ratio de solvabilité se déduit par calcul ($\frac{FONDS\;PROPRES}{SCR}$).
+
+```{r run_imputation}
+data <- imputer_masse_variables(
+      df_quarterly_complet, df_annual, natures = unique(df$Nature), variables = c("SCR", "FONDS PROPRES"))
+
+data$RATIO <- if_else(is.na(data$RATIO), data$`FONDS PROPRES`/data$SCR, data$RATIO)
+
+data <- data%>%mutate(Flag_Imputation_RATIO = case_when(
+          Flag_Imputation_SCR == TRUE ~ Flag_Imputation_SCR,
+          .default = FALSE))
+
+# Aperçu des lignes imputées
+data %>% 
+  filter(Flag_Imputation_SCR == TRUE | `Flag_Imputation_FONDS PROPRES` == TRUE) %>%
+  select(SOCIETE,Nature, Annee, Remise, SCR , `FONDS PROPRES`,RATIO) %>%
+  filter(!is.na(SCR))%>%
+  head(5)%>%
+  kable(caption = "Lignes ayant subi une imputation") %>%
+  kable_styling()
+```
+
+Le graphique ci-dessous montre les modifications apportées à l'évolution du SCR de la **Société 31** après l'imputation.
+
+```{r viz, fig.width=10, fig.height=6}
+# Préparation pour le graphique (Création d'un axe temps continu)
+plot_data <- data %>%
+  filter(SOCIETE == 31)
+
+# Graphique
+ggplot(plot_data, aes(x = Trimestre + 1, y = SCR / 1000000)) +
+  # 1. Ligne grise de fond (continuité)
+  geom_line(aes(group = 1), color = "gray70", linetype = "dashed") +
+  
+  # 2. Points et lignes colorés selon le type
+  # On mappe 'shape' et 'color' sur la même variable
+  geom_point(aes(color = Flag_Imputation_SCR, shape = Flag_Imputation_SCR), size = 4) +
+  geom_line(aes(color = Flag_Imputation_SCR, group = 1), linewidth = 1) +
+  
+  # 3. La courbe avant imputation (Pointillés)
+  geom_line(data = df_quarterly[df_quarterly$SOCIETE == 31,], 
+            aes(x = Trimestre + 1, y = SCR / 1000000, linetype = "Courbe avant imputation"), 
+            linewidth = 1, color = "#2c3e50") +
+  
+  # 4. FUSION COULEUR + FORME
+  # donner le MÊME 'name' et les MÊMES 'labels'
+  scale_color_manual(
+    name = "Statut des données",
+    values = c("FALSE" = "#2c3e50", "TRUE" = "#e74c3c"),
+    labels = c("FALSE" = "Valeurs réelles", "TRUE" = "Valeurs imputées")
+  ) +
+  scale_shape_manual(
+    name = "Statut des données",
+    values = c("FALSE" = 16, "TRUE" = 17), # 16 = rond plein, 17 = triangle plein
+    labels = c("FALSE" = "Valeurs réelles", "TRUE" = "Valeurs imputées")
+  ) +
+  
+  # 5. Légende Ligne
+  scale_linetype_manual(name = "", values = c("Courbe avant imputation" = "dotted")) +
+  
+  # 6. Axe X : uniquement les années entières
+  scale_x_continuous(breaks = function(x) seq(floor(min(x)), ceiling(max(x)), by = 1)) +
+  
+  theme_minimal() +
+  labs(
+    title = "Reconstruction de la série temporelle trimestrielle de la Société : 31",
+    y = "SCR (M€)",
+    x = "Année"
+  ) +
+  theme(legend.position = "bottom")
+```
+Les nouvelles données viennent apporter plus de variation dans l'évolution du SCR de la société. On constate que la courbe des données imputées est pratiquement toujours très éloignée de la courbe avant imputation.
+
+### 4.3.2.3 Evaluation de la méthode d'imputation
+
+Pour avoir une idée de la qualité de cette méthode d'imputation, nous prenons une société dont on dispose de toutes les valeurs de séries annuelles et trimestrielles. A partir de la série annuelle, nous reconstruisons avec la méthode d'imputation décrite plus haut la série Trimestrielle et nous comparons les 2 séries.
+Pour cet exercice, nous prenons **la société 4** qui est une société d'assurance **Non Vie**.
+```{r}
+# 2. Reconstruction de la série pour la Société 4
+# On prépare l'axe temporel (ex: 2021.25 pour T1, 2021.50 pour T2, etc.)
+df_backtest_complet <- df_quarterly_sub %>%
+  filter(SOCIETE == 4) %>%
+  select(Annee, Remise, , Trimestre, SCR_Reel = SCR) %>%
+  inner_join(stats_annuelles %>% filter(SOCIETE == 4), by = "Annee") %>%
+  inner_join(ratios_croissance, by = c("Annee", "Remise")) %>%
+  mutate(
+    SCR_Impute = Val_Annuelle / (1 + Moyenne_Taux_Evolution),
+  ) %>%
+  arrange(Trimestre)
+```
+
+```{r}
+ggplot(df_backtest_complet, aes(x = Trimestre)) +
+  # Zone d'ombre pour visualiser l'écart (ruban)
+  geom_ribbon(aes(ymin = SCR_Reel/1000000, ymax = SCR_Impute/1000000), fill = "grey", alpha = 0.3) +
+  # Courbes
+  geom_line(aes(y = SCR_Reel/1000000, color = "Réel"), size = 1) +
+  geom_line(aes(y = SCR_Impute/1000000, color = "Imputation"), linetype = "dashed", size = 1) +
+  # Points pour marquer les trimestres
+  geom_point(aes(y = SCR_Reel/1000000, color = "Réel")) +
+  geom_point(aes(y = SCR_Impute/1000000, color = "Imputation"), shape = 17) +
+  scale_color_manual(values = c("Réel" = "#2c3e50", "Imputation" = "#e74c3c")) +
+  scale_x_continuous(breaks = seq(min(df_backtest_complet$Annee), max(df_backtest_complet$Annee), 1)) +
+  labs(
+    title = "Reconstruction de la Série trimestrielle des SCR : Société 4",
+    x = "Année (Trimestres)", 
+    y = "SCR (M€)", 
+    color = "Série"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+```{r}
+df_backtest_complet<- df_backtest_complet %>% mutate(Erreur_Absolu = SCR_Reel-SCR_Impute,
+                                                     Erreur_Relatif = Erreur_Absolu/SCR_Reel)
+```
+Les deux courbes sont assez proches avec un écart relatif maximal de **`r round(df_backtest_complet$Erreur_Relatif[which.max(abs(df_backtest_complet$Erreur_Relatif))]*100, 2)`$\%$** au **trimestre `r substring(df_backtest_complet$Remise[which.max(abs(df_backtest_complet$Erreur_Relatif))], 2)`** de l'année **`r df_backtest_complet$Annee[which.max(abs(df_backtest_complet$Erreur_Relatif))]`**.
+
+## 4.3.3 Statistiques descriptives après imputation
+
+```{r eval=FALSE, include=FALSE}
+evolution <- data %>%
+  mutate(Nature_Group = case_when(
+    Nature %in% c("Vie/Capitalisation", "Mixte") ~ "Vie",
+    Nature == "Non Vie" ~ "Non Vie",
+    TRUE ~ NA_character_ # Exclut les autres natures s'il y en a
+  )) %>%
+  # On ne garde que les lignes qui correspondent à nos deux groupes
+  filter(!is.na(Nature_Group)) %>%
+  group_by(Trimestre, Nature_Group) %>%
+  summarise(SCR_Moyen = mean(SCR, na.rm = TRUE),
+            FONDS_PROPRES_Moyen = mean(`FONDS PROPRES`, na.rm = TRUE), 
+            RATIO_Moyen = sum(`FONDS PROPRES`, na.rm = TRUE)/sum(SCR, na.rm = TRUE), 
+            .groups = "drop")
+
+```
+
+```{r eval=FALSE, include=FALSE}
+ggplot(evolution, aes(x = Trimestre, y = SCR_Moyen/1000000, color = Nature_Group)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  geom_line(data = evol, aes(x = Trimestre, y= SCR_Moyen/1000000, color = Nature_Group) )+
+  geom_line(data = ev, aes(x= Annee, y = SCR_Moyen/1000000, 
+                           color= Nature_Group ), linetype = "dotted", linewidth = 1.2 )+
+  # Personnalisation des couleurs pour bien distinguer les deux groupes
+  scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+  scale_x_continuous(breaks = seq(2016, 2025, by = 2), labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+  labs(
+    title = "Évolution du SCR Moyen par nature",
+    x = "Annee",
+    y = "SCR Moyen (M€)",
+    color = "Nature"
+  ) +
+  
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+```{r eval=FALSE, include=FALSE}
+ggplot(evolution, aes(x = Trimestre, y = FONDS_PROPRES_Moyen/1000000, color = Nature_Group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  # Personnalisation des couleurs pour bien distinguer les deux groupes
+  scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+  scale_x_continuous(breaks = seq(2016, 2025, by = 2), labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+  labs(
+    title = "Évolution du Fonds propres par nature",
+    x = "Annee",
+    y = "Fonds propres Moyen (M€)",
+    color = "Nature"
+  ) +
+  
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+```{r eval=FALSE, include=FALSE}
+ggplot(evolution, aes(x = Trimestre, y = RATIO_Moyen/1000000, color = Nature_Group)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  # Personnalisation des couleurs pour bien distinguer les deux groupes
+  scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+  scale_x_continuous(breaks = seq(2016, 2025, by = 2), labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+  labs(
+    title = "Évolution du Fonds propres par nature",
+    x = "Annee",
+    y = "Fonds propres Moyen (M€)",
+    color = "Nature"
+  ) +
+  
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+```{r eval=FALSE, include=FALSE}
+courbe_par_entreprise <- function(df_annuel, df_quarterly, liste_id, variable) {
+
+  for (id in liste_id) {
+    
+    # Extraction des données pour l'entreprise spécifique
+    data_a <- df_annuel %>% filter(SOCIETE == id)
+    data_t <- df_quarterly %>% filter(SOCIETE == id)
+    
+    p <- ggplot() +
+      # Courbe Annuelle - Ligne continue épaisse
+      geom_line(data = data_a, aes(x = as.numeric(Annee), y = !!sym(variable), color = "Annuelle"), group = 1, ) +
+      geom_point(data = data_a, aes(x = as.numeric(Annee), y = !!sym(variable)), size = 2)+
+      
+      # Courbe Trimestrielle - Ligne pointillée plus fine
+      geom_line(data = data_t, aes(x = Trimestre, y = !!sym(variable), color = "Trimestrielle"), size = 1, linetype = "dashed", group = 1) +
+      geom_point(data = data_t, aes(x = Trimestre, y = !!sym(variable), color = "Trimestrielle"), size = 2) +
+      
+      # Design
+      scale_color_manual(values = c("Annuelle" = "#1ae46e", "Trimestrielle" = "#377EB8")) +
+      ##scale_x_continuous(breaks = seq(min(df_annuel$Annee), max(df_annuel$Annee), 1)) +
+      labs(
+        title = paste("Évolution : ", variable, "- Société : ", id),
+        x = "Année", y = variable
+      ) +
+      theme_minimal()
+    print(p)
+  }
+}
+```
+
