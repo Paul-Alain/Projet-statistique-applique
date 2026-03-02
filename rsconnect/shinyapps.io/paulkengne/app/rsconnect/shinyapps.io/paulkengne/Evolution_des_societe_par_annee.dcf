@@ -1,0 +1,12 @@
+name: Evolution_des_societe_par_annee
+title: Evolution_des_societe_par_annee
+username: paulkengne
+account: paulkengne
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16649180
+bundleId: 11569046
+url: https://paulkengne.shinyapps.io/Evolution_des_societe_par_annee/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

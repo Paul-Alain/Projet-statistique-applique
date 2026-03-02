@@ -1,0 +1,12 @@
+name: Modelisation_stat_des
+title: Modelisation_stat_des
+username: paulkengne
+account: paulkengne
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16629149
+bundleId: 11557826
+url: https://paulkengne.shinyapps.io/Modelisation_stat_des/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
