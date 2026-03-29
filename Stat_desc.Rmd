@@ -32,7 +32,8 @@ library(rlang)
 library(shiny)
 library(quantmod)
 library(tidyquant)
-
+library(lubridate)
+library(readr)
 
 
 ```
@@ -85,7 +86,7 @@ FRPS,
 Mixte,
 Non Vie,
 Réassurance,
-Vie / Capitalisation
+Vie \ Capitalisation
 
 - Famille :
 Identifie le type institutionnel de la compagnie d’assurance.
@@ -117,7 +118,6 @@ num_vars <- names(df)[sapply(df, is.numeric)]
 num_vars <- setdiff(num_vars, c("SOCIETE","Annee", "RATIO")) 
 
 ## function to change variables' scales
-
 divide_1e8 <- function(df, exclude = c("SOCIETE", "Annee", "RATIO")) {
   num_vars <- names(df)[sapply(df, is.numeric)]
   num_vars <- setdiff(num_vars, exclude)
@@ -189,7 +189,7 @@ kable(cv_soc_detail)
 
 
 ```
-Les coefficients de variation sont relativement faibles, inférieurs à $0,39$, à l’exception de celui des fonds propres de la société indexée par $235$, qui est très proche de1. Le tableau ci-dessous présente l’ensemble des valeurs annuelles des fonds propres de cette société.
+Les coefficients de variation sont relativement faibles, inférieurs à $0,39$, à l’exception de celui des fonds propres de la société indexée par $235$, qui est très proche de 1.
 ```{r, include=FALSE}
 tab1<-df%>%filter(
   Remise=="A",
@@ -239,27 +239,19 @@ df_pct <- df %>%
 # Graphique 
 ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nature)) +
   geom_bar(stat = "identity", width = 0.5, color = "gray30") +  
-  geom_text(aes(label = paste0(round(Pourcentage, 2), "%")), 
-            hjust = 1, color = "black", size = 3.5) + 
+  geom_text(aes(label = sprintf("%.2f%%", Pourcentage)),
+          hjust = 0.5,
+          size = 3.5) + 
   coord_flip() +
   labs(title = "Répartition des compagnies par Nature (%)",
        x = "Nature",
        y = "") +
   scale_y_continuous(breaks = NULL) +  
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "none",
-    panel.grid.major.y = element_blank(),          
-    panel.grid.minor.y = element_blank(),          
-    panel.grid.major.x = element_line(color = "gray80", linetype = "dashed"),
-    panel.grid.minor.x = element_line(color = "gray90", linetype = "dashed"),
-    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    axis.text = element_text(color = "black")
-  ) +
-  scale_fill_brewer(palette = "Set2")  # palette harmonieuse
-
-
+ 
+  scale_fill_brewer(palette = "Set2")+
+  labs(caption = "Source: France Assureurs")
 ```
+
 L’activité d’assurance non-vie concentre la majorité des compagnies du marché. À l’inverse, les Fonds de Retraite et de Prévoyance Sociale (FRPS) demeurent très faiblement représentés, avec une part limitée à $0,91 \%$. De même, le segment de la réassurance ne regroupe qu’une fraction marginale des compagnies d’assurance, soit $2,56 \%$.
 
 
@@ -283,18 +275,9 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
        x = "Famille",
        y = "") +
   scale_y_continuous(breaks = NULL) +  
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "none",
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor.y = element_blank(),
-    panel.grid.major.x = element_line(color = "gray80", linetype = "dashed"),
-    panel.grid.minor.x = element_line(color = "gray90", linetype = "dashed"),
-    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    axis.text = element_text(color = "black")
-  ) +
-  scale_fill_brewer(palette = "Set2")  
-
+  
+  scale_fill_brewer(palette = "Set2")+
+  labs(caption = "Source: France Assureurs")
 ```
 La structure du marché est majoritairement dominée par les organismes mutualistes, lesquels représentent $53,71 \%$ de l’ensemble des compagnies. Le solde du marché se répartit de manière relativement équilibrée entre les assureurs traditionnels et les bancassureurs.
 
@@ -312,18 +295,20 @@ df_pct <- df %>%
 ggplot(df_pct, aes(x = Famille, y = pct, fill = Nature)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   geom_text(aes(label = paste0(round(pct, 1), "%")),
-            position = position_dodge(width = 0.9), vjust = -0.5, size = 3.5) +
+            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   labs(title = "Répartition de la Nature par Famille (en %)",
        x = "Famille",
        y = "") +  # supprimer label axe y
   scale_y_continuous(breaks = NULL) +  # pas de graduations
   theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
-
-
+  theme(legend.position = "bottom")+
+  labs(caption = "Source: France Assureurs")
 ```
+
+
 À première vue, on observe une répartition déséquilibrée de la nature des services prestés selon les familles d’assureurs. Quelle que soit la catégorie considérée, la majorité des entreprises opère dans l’assurance non-vie, tandis que moins de
 $20\%$ proposent des prestations d’assurance vie et de capitalisation, moins de $8\%$ interviennent dans la réassurance, et moins de $2\%$ fournissent des services de fonds de retraite et de prévoyance sociale.
+
 ```{r}
 ## Crossed distribution
 df_pct <- df %>%
@@ -341,42 +326,21 @@ ggplot(df_pct, aes(x = Nature, y = pct, fill = Famille)) +
        y = "") +  # supprimer label axe y
   scale_y_continuous(breaks = NULL) +  # pas de graduations
   theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
-
+  theme(legend.position = "bottom")+
+  labs(caption = "Source: France Assureurs")
 ```
+
+
 
 À l’exception du segment de la réassurance, les organismes mutualistes apparaissent comme majoritairement représentés dans l’ensemble des regroupements par nature d’activité. Leur part relative demeure plus élevée que celle des bancassureurs et des assureurs traditionnels, tant dans les catégories des prestataires d’assurance non-vie que dans celles de l’assurance vie et de la capitalisation. En revanche, le secteur de la réassurance est dominé par les assureurs traditionnels, lesquels représentent $71,7\%$ des acteurs recensés. Il convient également de souligner que seuls les organismes mutualistes et les assureurs traditionnels interviennent dans la fourniture de  fonds de retraite et de prévoyance sociale (FRSP). Enfin, la répartition des différentes familles d’assureurs apparaît globalement équilibrée dans les activités mixtes combinant assurance vie et assurance non-vie.
 
 Dans un soucis d'avoir des données de taille comparable entre les catégorie mixte, non-vie et vie, nous avons fusionné les catégories mixte et vie.
 
-```{r, include=False}
-library(readr)
-df_ajt <- read_csv("trim_ajustées.csv")
-df_ajt$Nature_Group<- recode(df_ajt$Nature_Group,
-                             "Vie"="vie/mixte")
-#View(df_ajt)
-
-```
 
 
-
-```{r, include=False}
-
-scr<- df_ajt%>%filter(Variable=="SCR", Remise=="T4")%>%select(-c(Remise, Variable,Moyenne_Ajustee))%>%rename("scr"="total_ajuste")
-
-fond_p<- df_ajt%>%filter(Variable=="FONDS PROPRES", Remise=="T4")%>%select(-c(Remise, Variable, Moyenne_Ajustee))%>%rename("fonds propres"="total_ajuste")
-
-# indicateur en centaine de millions d'euros
-indicateurs<-inner_join(scr,fond_p, by=c("Annee", "Nature_Group"))%>%mutate(ratio=`fonds propres`/scr ,scr=scr/10^8,  `fonds propres` = `fonds propres`/10^8)
-
-
-```
-
-```{r, include=False}
-### Fusion des catégorie
-
+```{r}
 dff <- df %>%
-  mutate(
+ mutate(
     Nature = case_when(
       Nature %in% c("Mixte", "Vie/Capitalisation") ~ "Vie/Mixte",
       TRUE ~ Nature
@@ -388,11 +352,7 @@ dff<- dff %>% filter(
   Nature %in% c("Non Vie","Vie/Mixte" ),
   Remise=="A"
 )
-
-
 ```
-
-
 
 
 \newpage
@@ -413,7 +373,7 @@ Cette analyse descriptive constitue une étape préalable essentielle à l’ét
 
 
 
-```{r, include=FALSE}
+```{r}
 # 1) Années attendues
 annees_attendues <- dff %>%
   distinct(Annee) %>%
@@ -472,7 +432,7 @@ Dans chaque famille, plus de $50 \%$ des sociétés disposent de données couvra
 
 ### Représentativité temporelle des sociétés par Nature.
 
-```{r,include=FALSE}
+```{r}
 # 1) Années attendues
 annees_attendues <- dff %>%
   distinct(Annee) %>%
@@ -530,7 +490,12 @@ if (nrow(dist_miss_nat) == 0) {
 
 Que ce soit dans le segment vie/mixte ou dans le segment non-vie, plus de $60 \%$ des sociétés sont observées sur l’ensemble de la période d’étude. Dans les deux segments, la couverture temporelle apparaît ainsi globalement satisfaisante, traduisant une bonne représentativité des sociétés sur l’horizon considéré.
 
-### Évolution temporelle des variables de solvabilités
+## Évolution temporelle des variables de solvabilités
+La principale variable de solvabilité considérée est le ratio de solvabilité. À côté de cette variable, les données disponibles incluent également le montant des fonds propres et le capital de solvabilité requis (SCR) par entreprise.
+
+### Le capital de solvabilité requis
+
+Pour chacune des catégories vie/mixte et non-vie, le capital de solvabilité requis (SCR) présente une tendance globale à la hausse sur la période 2015-2024. Cependant, le SCR est nettement plus élevé pour la catégorie vie/mixte, représentant même plus du double de celui de la catégorie non-vie pour chacune des années de la période considérée. On note une diminution apparente du SCR entre 2017 et 2016, ce phénomène s’expliquant par l’absence de données relatives au SCR de l’année 2015, ce qui a limité l’estimation des valeurs manquantes pour de l'année 2016.
 ```{r, include=FALSE}
 
 
@@ -640,7 +605,6 @@ plot_fp_scr_mean_ratio <- function(data, grp, titre) {
 
 ```
 
-##############
 
 ```{r, include=FALSE}
 plots_fam <- list()
@@ -660,92 +624,325 @@ for (f in unique(agg_fam$Famille)) {
 
 ```
 
-#### Evolution par famille
-```{r}
-plots_fam[1]
+```{r, include=FALSE}
+df_ajt <- read_csv("trim_ajustées.csv")
+df_ajt$Nature_Group<- recode(df_ajt$Nature_Group,
+                             "Vie"="vie/mixte")
+
 ```
 
-```{r}
-plots_fam[2]
-```
+```{r, include=FALSE}
 
-```{r}
-plots_fam[3]
-```
+scr<- df_ajt%>%filter(Variable=="SCR", Remise=="T4")%>%select(-c(Remise, Variable))%>%rename("scr_tot"="total_ajuste", "scr_moy"="Moyenne_Ajustee")
 
-#### Evolution par nature
-```{r}
-plots_nat <- list()
+fond_p<- df_ajt%>%filter(Variable=="FONDS PROPRES", Remise=="T4")%>%select(-c(Remise, Variable))%>%rename("fond_tot"="total_ajuste","fond_moy"="Moyenne_Ajustee")
 
-for (n in unique(agg_nat$Nature)) {
-  plots_nat[[n]] <- plot_fp_scr_mean_ratio(
-    data  = agg_nat %>% dplyr::filter(Nature == n),
-    grp   = "Nature",
-    titre = paste("FP moyen, SCR moyen et ratio","(",n,")")
-  )
-}
-
-#plots_nat
+# indicateur en centaine de millions d'euros
+indicateurs<-inner_join(scr,fond_p, by=c("Annee", "Nature_Group"))%>%mutate(ratio=`fond_tot`/scr_tot ,scr_tot=scr_tot/10^8,  `fond_tot` = `fond_tot`/10^8, 
+                                                                            fond_moy=fond_moy/10^8, scr_moy=scr_moy/10^8)
 
 ```
 
 
 ```{r}
-plots_nat[1]
+ggplot(indicateurs)+
+  aes(x=Annee,y=scr_moy, colour=Nature_Group)+
+  geom_line()+
+  geom_point()+
+  xlab("Années")+
+  ylab("SCR moyen")+
+  ggtitle("Evolution du SCR moyen au cours du temps")+
+  labs(caption = "Source: France Assureur")
+
+
+  
 ```
 
+
+
+### Les fonds propres 
+
+En ce qui concerne les fonds propres, la tendance observée est similaire à celle décrite précédemment. Ainsi, les fonds propres et le SCR des deux catégories évoluent de manière parallèle.
 ```{r}
-plots_nat[2]
+ggplot(indicateurs)+
+  aes(x=Annee, y=fond_moy, colour = Nature_Group)+
+  geom_line()+
+  geom_point()+
+  xlab("Années")+
+  ylab("Foonds propres moyens")+
+  ggtitle("Evolution des fonds propres au cours du temps")+
+  labs(caption = "Source: France Assureur")
+
+
+```
+
+### Le ratio de solvabilité
+
+Le ratio de solvabilité de la catégorie non-vie présente une tendance à la baisse, tout en restant nettement supérieur à celui de la catégorie vie/mixte, contrairement à l’évolution des fonds propres et du SCR. Ce ratio demeure constamment au-dessus de $2,5\%$, tandis que celui de la catégorie vie/mixte se situe en dessous de ce seuil.
+
+```{r}
+ggplot(indicateurs)+
+  aes(x=Annee, y=ratio, colour = Nature_Group)+
+  geom_line()+
+  geom_point()+
+  xlab("Années")+
+  ylab("Ratio de solvabilité")+
+  ggtitle("Evolution du ratio de solvabilité au cours du temps")+
+  labs(caption = "Source: France Assureur")
 ```
 
 
+## Visualisation des variables fiancières et macros
 
 
+### Les taux d'intérêts de court et de  long terme
 
-## Évolution des grandeurs de solvabilité par société
-
-
-
-Compte tenu du nombre élevé de sociétés observées (260), la visualisation des indicateurs de solvabilité a été déportée vers un tableau de bord hébergé à distance, afin d’éviter d’alourdir le document. L’analyse met en évidence que les sociétés présentant un identifiant numérique élevé disposent généralement d’un historique de données limité sur l’horizon d’étude (dix années), et ce indépendamment du fait que les années considérées soient antérieures ou postérieures à leur année de création.
-Le tableau de bord interactif est accessible via le lien suivant : \textcolor{blue}{\href{https://paulkengne.shinyapps.io/Evolution_des_societe_par_annee/}{Lien pour observer l’évolution des grandeurs par société}}
-
-
-
+Les taux d’intérêt à court et à long terme utilisés se réfèrent aux obligations d’État émises par la France, avec des échéances respectives de 3 mois et de 10 ans. Ces taux influencent la solvabilité des compagnies d’assurance selon deux canaux principaux: la valorisation des actifs obligataires et le niveau des provisions techniques pour les contrats à long terme. Les variations des taux d’intérêt à long terme ont un impact plus marqué sur le SCR et le ratio de solvabilité que celles des taux à court terme, qui affectent principalement la gestion de la trésorerie.
 ```{r}
+taux <- read_csv("taux.csv")[c("Annees","Long_terme", "Court_terme")]
+
+ggplot(taux, aes(x=Annees))+
+  
+  geom_line(aes(y=Long_terme, colour="Taux de long terme"))+
+  geom_point(aes(y=Long_terme, colour="Taux de long terme"))+
+  geom_line(aes(y=Court_terme, colour="Taux de court terme"))+
+  geom_point(aes(y=Court_terme, colour="Taux de court terme"))+
+  labs(colour="type de taux", caption = "Source: ENSEE")+
+  xlab("Années")+
+  ylab("Taux d'intérêt")+
+  ggtitle("Evolution des taux d'intérêts au court du temps")
+  #theme_minimal()
+
+```
+Les taux d’intérêt à court et à long terme présentent une évolution similaire au fil du temps. Cependant, le taux à court terme demeure nettement supérieur au taux à long terme jusqu’en 2023. Par ailleurs, la période 2016-2021 se caractérise par une baisse linéaire et négative du taux à court terme, tandis que le taux à long terme connaît une diminution globale sur la même période.
+
+### Les indices boursiers.
+
+Les indices boursiers reflètent la performance globale des actions. Une baisse de ces indices entraîne une diminution de la valeur des actifs en actions détenus par les assureurs, ce qui se traduit par une augmentation du SCR actions et une réduction du ratio de solvabilité. Dans cette étude, deux indices boursiers sont considérés: l’EURO STOXX et le CAC 40.
+
+#### L’EURO STOXX 50
+
+
+
+L’*EURO STOXX 50* est un indice boursier regroupant les 50 principales sociétés cotées de la zone euro, sélectionnées principalement en fonction de leur capitalisation boursière flottante. Il constitue un indicateur de la santé économique et des performances des marchés financiers au sein de la zone euro. Le graphique présenté ci-dessous illustre l’évolution des valeurs maximales et minimales de cet indice deouis $2015$ jusqu'en $2025$.
+
+```{r, include=FALSE}
 library(tidyquant)
 monthly_STOXX50E <- tq_get("^STOXX50E",
-                       from = "2016-01-01",
+                       from = "2000-01-01",
                        to = "2025-01-01",
                        periodicity = "monthly")
+monthly_STOXX50E<-monthly_STOXX50E%>%filter(year(date)>2014)
 
 head(monthly_STOXX50E)
 ```
 
+```{r, include=FALSE}
+library(tidyverse)
+STOXX50E<-monthly_STOXX50E%>% mutate(date=year(date))%>%group_by(date)%>%summarise(
+  high=max(high),
+  low=min(low)
+)
 
-```{r}
-for i in range(5):
-  print(i)
+head(STOXX50E)
+
+```
+
+
+```{r, include=FALSE}
+
+ggplot(STOXX50E, aes(x=date))+
+  geom_line(aes(y=high, colour="Valeur max"))+
+  geom_point(aes(y=high, colour="Valeur max"))+
+  geom_point(aes(y=low, colour="Valeur min"))+
+  geom_line(aes(y=low, colour="Valeur min"))+
+  scale_x_continuous(breaks = c(2015,2017,2020,2022, 2024))+
+  labs(colour="Etats de l'indice", caption = "Source: Yahoo finace")+
+  xlab("Années")+
+  ylab("EURO STOXX 50")+
+  ggtitle("Evolution de l'indice EURO STOXX 50")
+
 ```
 
 
 ```{r}
-import yfinance as yf
 
-# Euro Stoxx 50
-data = yf.download("^STOXX50E",
-                   start="2010-01-01",
-                   interval="1mo")
+ggplot(monthly_STOXX50E, aes(x=date))+
+  geom_line(aes(y=high, color="Valeur max"))+
+  geom_point(aes(y=high, color="Valeur max"))+
+  geom_line(aes(y=low, color="Valeur min"))+
+  geom_point(aes(y=low, color="Valeur min"))+
+  labs(colour="Etas de l'indice", caption = "Yahoo finance")+
+  xlab("Années")+
+  ylab("EURO STOXX 50")+
+  ggtitle("Evolution mensuelle de l'indice EURO STOXX 50")
+```
+Ces indices évoluent de manière globalement parallèle, suivant une tendance générale à la hausse. Néanmoins, une chute marquée est observée en mars 2020, atteignant un niveau minimal, en raison des mesures de restriction et de l’incertitude économique engendrées par la pandémie de COVID-19. C'est en effet en cette période que Donald Trump avait annoncé la restriction des entrées sur le téritoire américain; source d'une panique boursière.
 
-data.sort_values("Date").tail(12)
+#### Le Standard & Poor’s 500 (S&P 500)
+
+Le S&P 500  est un indice boursier large représentant les 500 plus grandes sociétés cotées aux États-Unis, pondérées en fonction de leur capitalisation boursière flottante. Il est largement utilisé comme référence du marché actions américain et constitue un indicateur clé de la performance économique et financière du pays. L’évolution des valeurs maximales et minimales de cet indice entre 2015 et 2025, présentée dans le graphique ci-dessous, permet d’analyser la volatilité du marché ainsi que l’impact des événements macroéconomiques et géopolitiques sur les marchés financiers américains
+
+
+```{r}
+monthly_SP500 <- tq_get("^GSPC",
+                        from = "2000-01-01",
+                        to = "2025-01-01",
+                        periodicity = "monthly")
+
+monthly_SP500 <- monthly_SP500 %>% 
+  filter(year(date) > 2014)
+
+
+ggplot(monthly_SP500, aes(x=date))+
+  geom_line(aes(y=high, color="Valeur max"))+
+  geom_point(aes(y=high, color="Valeur max"))+
+  geom_line(aes(y=low, color="Valeur min"))+
+  geom_point(aes(y=low, color="Valeur min"))+
+  labs(colour="Etats de l'indice", caption = "Source:Yahoo finance")+
+  xlab("Années")+
+  ylab("S&P 500")+
+  ggtitle("Evolution mensuelle de l'indice S&P 500")
+```
+Le S&P 500 connaît une tendence croissance sur toute la période avec également une pertubation en mars 2020 due à la pandémie de OVID-19. Toutefois cette indice est visiblement moins volatile que l'EURO STOXX 50.
+
+#### L'indice CAC 40 
+&nbsp;
+
+L’indice *CAC 40* constitue le principal indice boursier de la Bourse de Paris, reflétant la performance des 40 actions les plus importantes et les plus activement négociées sur Euronext Paris. Le graphique ci-après illustre l’évolution de ses valeurs maximales et minimales au fil du temps.
+
+```{r, include=FALSE}
+CA_40_month <- tq_get("^FCHI",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")%>%filter(year(date)>2014)
+
+CA_40<-CA_40_month%>%mutate(date=year(date))%>%group_by(date)%>%summarise(
+  high=max(high),
+  low=min(low)
+)
+CA_40_month
+```
+
+
+```{r, include=FALSE}
+ggplot(CA_40, aes(x=date))+
+  geom_point(aes(y=high, colour="Valeur max"))+
+  geom_line(aes(y=high, colour="Valeur max"))+
+   geom_point(aes(y=low, colour="Valeur min"))+
+  geom_line(aes(y=low, colour="Valeur min"))+
+  xlab("Années")+
+  ylab("Indice CAC 40")+
+  labs(colour="Etats de l'indice", caption = "Source: yahoo finance")+
+  ggtitle("Evolution de l'indice CAC 40 au cours du temps")
+  
+
 ```
 
 
 ```{r}
-yearly_STOXX50E <- tq_get("^STOXX50E",
-                      from = "2016-01-01",
-                      to = "2025-01-01",
-                      periodicity = "yearly")
-
-head(yearly_STOXX50E)
+ggplot(CA_40_month, aes(x = date))+
+  geom_line(aes(y=high, colour="Valeur max"))+
+  geom_point(aes(y=high, colour="Valeur max"))+
+  geom_line(aes(y=low, colour="Valeur min"))+
+  geom_point(aes(y=low, colour="Valeur min"))+
+  xlab("Années")+
+  ylab("CAC 40")+
+  ggtitle("Evolution mensuelle de l'indice CAC 40 au cours du temps")+
+  labs(colour="Etats de l'indice", caption = "Source: yahoo finance")
+  
+  
+  
 ```
 
+Comme pour l’EURO STOXX, les valeurs  de l'indice CAC 40  évoluent de manière parallèle et croissante avec également une chutte marqué en mars 2025 pour la même raison que précédemment.
+
+
+#### L'indice DAX
+
+Le DAX (Deutscher Aktienindex) est l’indice de référence du marché boursier allemand, regroupant les 40 principales sociétés cotées à la Bourse de Francfort, sélectionnées principalement en fonction de leur capitalisation boursière flottante. C'est l'équivalent allemend du CAC 40. Le graphique ci-après représente les variation de cet indice sur la période $2015-2025.$
+
+```{r}
+monthly_DAX <- tq_get("^GDAXI",
+                      from = "2015-01-01",
+                      to   = "2025-01-01",
+                      periodicity = "monthly") %>%
+  filter(year(date) >= 2015)
+ggplot(monthly_DAX, aes(x=date))+
+  geom_line(aes(y=high, color="Valeur max"))+
+  geom_point(aes(y=high, color="Valeur max"))+
+  geom_line(aes(y=low, color="Valeur min"))+
+  geom_point(aes(y=low, color="Valeur min"))+
+  labs(colour="Etats de l'indice", caption = "Source: Yahoo finance")+
+  xlab("Années")+
+  ylab("DAX")+
+  ggtitle("Evolution mensuelle de l'indice DAX")
+
+
+```
+
+
+
+### Le produit intérieur brut (PIB) 
+
+Le produit intérieur brut (PIB) correspond à la somme des valeurs ajoutées générées par l’ensemble des activités économiques d’un pays sur une période donnée. Il constitue un indicateur du niveau d’activité économique. Une augmentation du PIB traduit une expansion de l’activité économique, susceptible d’influencer le volume et l’intensité de l’activité assurantielle. La figure ci-après illustre l’évolution du PIB de la France sur la période 2010-2022.
+
+```{r}
+
+url <- "https://static.data.gouv.fr/resources/produit-interieur-brut-pib-de-la-france/20231223-213736/pib-france.csv"
+
+pib <- read_csv(url)%>% filter(annee > 2014 )
+pib <- pib %>% mutate(annee = as.integer(annee))
+ggplot(pib)+
+  aes(x=annee, y=pib)+
+  geom_line()+
+  geom_point()+
+  scale_y_continuous(
+    labels = label_number(
+      big.mark = " ",      # espace pour les milliers
+      decimal.mark = ",",  # virgule pour les décimales
+      accuracy = 1         # nombre entier
+    ))+
+  scale_x_continuous(breaks = pib$annee)+
+  xlab("Annee")+
+  ylab("PIB")+
+  ggtitle("PIB de la France en million d'euros courant")+
+  labs(caption="Source: Data gouv")
+```
+Le PIB connaît une croissance continue sur la période, avec un ralentissement notable en 2020 en raison de la crise liée à la COVID-19.
+
+### Le taux d'inflation
+
+Le taux d’inflation est mesuré par la variation de l’indice des prix à la consommation (IPC). Une tendance à la hausse de l’IPC traduit une augmentation du coût de la vie. L’inflation peut influencer la solvabilité des assureurs en modifiant le taux d’intérêt réel. Par ailleurs, une inflation élevée entraîne généralement une augmentation de la sévérité des sinistres, ce qui peut avoir un impact direct sur le SCR.
+
+
+```{r, include=FALSE}
+
+ipc <- read_delim("ipc.csv", delim = ";", 
+    escape_double = FALSE, trim_ws = TRUE)
+
+ipc<- ipc[6:dim(ipc)[1],c(1,2)]%>%rename( "ipc"=names(ipc)[2], "annee"=names(ipc)[1])%>%mutate(ipc=as.numeric(ipc))
+
+ipc<- ipc%>%filter(
+  "12"== substr(annee,6,7))
+
+ipc$annee<-substr(ipc$annee, 1,4)
+
+ipc<-ipc %>% mutate(annee=as.numeric(annee))%>% filter(annee > 2015)
+
+
+
+```
+
+```{r}
+ggplot(ipc)+
+  aes(x=annee, y=ipc)+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks=c(2015,2017,2019,2021,2023,2025))+
+  xlab("Années")+
+  ylab("IPC")+
+  labs(caption="Source: ENSEE")+
+  ggtitle("Indice de prix à la consommation base 2025")
+```
+L’indice des prix à la consommation présente une évolution continuellement croissante, reflétant une inflation persistante. 

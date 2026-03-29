@@ -1,0 +1,147 @@
+---
+title: "Data"
+output: pdf_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,        # ne pas afficher le code
+  message = FALSE,     # masquer messages
+  warning = FALSE,     # masquer warnings
+  fig.align = "left",# centrer tous les graphiques
+  fig.width = 7,       # largeur standard
+  fig.height = 5       # hauteur standard
+  
+)
+
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(glue)
+library(scales)
+library(ggh4x)
+library(rlang)
+library(shiny)
+library(quantmod)
+library(tidyquant)
+library(lubridate)
+library(readr)
+```
+
+## Les indicateurs de solvabilité traités
+
+```{r, include=FALSE}
+df_ajt <- read_csv("trim_ajustées.csv")
+df_ajt$Nature_Group<- recode(df_ajt$Nature_Group,
+                             "Vie"="vie/mixte")
+View(df_ajt)
+```
+
+
+## Les indices financiers
+
+### Les taux d'intérêts de court et de  long terme
+
+Les taux d’intérêt à court et à long terme utilisés se réfèrent aux obligations d’État émises par la France, avec des échéances respectives de 3 mois et de 10 ans. Ces taux influencent la solvabilité des compagnies d’assurance selon deux canaux principaux: la valorisation des actifs obligataires et le niveau des provisions techniques pour les contrats à long terme. Les variations des taux d’intérêt à long terme ont un impact plus marqué sur le SCR et le ratio de solvabilité que celles des taux à court terme, qui affectent principalement la gestion de la trésorerie.
+```{r}
+taux <- read_csv("taux.csv")[c("Annees","Long_terme", "Court_terme")]
+head(taux)
+
+```
+
+## Indices boursiers
+
+### EURO STOXX 50
+
+L’*EURO STOXX 50* est un indice boursier regroupant les 50 principales sociétés cotées de la zone euro, sélectionnées principalement en fonction de leur capitalisation boursière flottante. Il constitue un indicateur de la santé économique et des performances des marchés financiers au sein de la zone euro. Le graphique présenté ci-dessous illustre l’évolution des valeurs maximales et minimales de cet indice deouis $2015$ jusqu'en $2025$.
+
+```{r, include=FALSE}
+library(tidyquant)
+monthly_STOXX50E <- tq_get("^STOXX50E",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")
+monthly_STOXX50E<-monthly_STOXX50E%>%filter(year(date)>2014)
+
+head(monthly_STOXX50E)
+```
+
+
+### Le Standard & Poor’s 500 (S&P 500)
+
+Le S&P 500  est un indice boursier large représentant les 500 plus grandes sociétés cotées aux États-Unis, pondérées en fonction de leur capitalisation boursière flottante. Il est largement utilisé comme référence du marché actions américain et constitue un indicateur clé de la performance économique et financière du pays. L’évolution des valeurs maximales et minimales de cet indice entre 2015 et 2025, présentée dans le graphique ci-dessous, permet d’analyser la volatilité du marché ainsi que l’impact des événements macroéconomiques et géopolitiques sur les marchés financiers américains
+
+
+```{r}
+monthly_SP500 <- tq_get("^GSPC",
+                        from = "2000-01-01",
+                        to = "2025-01-01",
+                        periodicity = "monthly")
+
+monthly_SP500 <- monthly_SP500 %>% 
+  filter(year(date) > 2014)
+
+head(monthly_SP500)
+```
+
+### L'indice CAC 40 
+
+
+L’indice *CAC 40* constitue le principal indice boursier de la Bourse de Paris, reflétant la performance des 40 actions les plus importantes et les plus activement négociées sur Euronext Paris. Le graphique ci-après illustre l’évolution de ses valeurs maximales et minimales au fil du temps.
+
+```{r, include=FALSE}
+CA_40_month <- tq_get("^FCHI",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")%>%filter(year(date)>2014)
+head(CA_40_month)
+```
+
+
+#### L'indice DAX
+
+Le DAX (Deutscher Aktienindex) est l’indice de référence du marché boursier allemand, regroupant les 40 principales sociétés cotées à la Bourse de Francfort, sélectionnées principalement en fonction de leur capitalisation boursière flottante. C'est l'équivalent allemend du CAC 40. Le graphique ci-après représente les variation de cet indice sur la période $2015-2025.$
+
+```{r}
+monthly_DAX <- tq_get("^GDAXI",
+                      from = "2015-01-01",
+                      to   = "2025-01-01",
+                      periodicity = "monthly") %>%
+  filter(year(date) >= 2015)
+head(monthly_DAX)
+
+```
+
+### Les indices macros
+
+#### Le produit intérieur brut (en million d'euros courant) 
+
+Le produit intérieur brut (PIB) correspond à la somme des valeurs ajoutées générées par l’ensemble des activités économiques d’un pays sur une période donnée. Il constitue un indicateur du niveau d’activité économique. Une augmentation du PIB traduit une expansion de l’activité économique, susceptible d’influencer le volume et l’intensité de l’activité assurantielle. La figure ci-après illustre l’évolution du PIB de la France sur la période 2010-2022.
+
+```{r}
+
+url <- "https://static.data.gouv.fr/resources/produit-interieur-brut-pib-de-la-france/20231223-213736/pib-france.csv"
+
+pib <- read_csv(url)%>% filter(annee > 2014 )
+
+head(pib)
+
+```
+
+#### Le taux d'inflation
+
+Le taux d’inflation est mesuré par la variation de l’indice des prix à la consommation (IPC). Une tendance à la hausse de l’IPC traduit une augmentation du coût de la vie. L’inflation peut influencer la solvabilité des assureurs en modifiant le taux d’intérêt réel. Par ailleurs, une inflation élevée entraîne généralement une augmentation de la sévérité des sinistres, ce qui peut avoir un impact direct sur le SCR.
+
+```{r, include=FALSE}
+
+ipc <- read_delim("ipc.csv", delim = ";", 
+    escape_double = FALSE, trim_ws = TRUE)
+
+ipc<- ipc[6:dim(ipc)[1],c(1,2)]%>%rename( "ipc"=names(ipc)[2], "annee"=names(ipc)[1])%>%mutate(ipc=as.numeric(ipc))
+
+head(ipc)
+
+```
