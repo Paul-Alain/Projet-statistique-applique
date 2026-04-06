@@ -1,0 +1,664 @@
+---
+title: "Regression"
+output: pdf_document
+date: "2026-03-31"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  comment = "",
+  fig.align = "left",
+  fig.width = 7,
+  fig.height = 5
+)
+
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(glue)
+library(scales)
+library(ggh4x)
+library(rlang)
+library(shiny)
+library(quantmod)
+library(tidyquant)
+library(lubridate)
+library(readr)
+```
+
+## Les indicateurs de solvabilité traités
+
+```{r, include=FALSE}
+df_ajt <- read_csv("trim_ajustées.csv")
+df_ajt$Nature_Group<- recode(df_ajt$Nature_Group,
+                             "Vie"="vie/mixte")
+head(df_ajt)
+```
+
+## Donnes assureurs
+
+```{r, echo=FALSE}
+assur <- readRDS("BASE_SCR_ENSAE_ANONYME.rds")
+
+kable(head(assur))
+```
+
+## Les indices financiers
+
+### Les taux d'intérêts de court et de long terme
+
+Les taux d’intérêt à court et à long terme utilisés se réfèrent aux obligations d’État émises par la France, avec des échéances respectives de 3 mois et de 10 ans. Ces taux influencent la solvabilité des compagnies d’assurance selon deux canaux principaux: la valorisation des actifs obligataires et le niveau des provisions techniques pour les contrats à long terme. Les variations des taux d’intérêt à long terme ont un impact plus marqué sur le SCR et le ratio de solvabilité que celles des taux à court terme, qui affectent principalement la gestion de la trésorerie.
+
+```{r}
+taux <- read_csv("taux.csv")[c("Annees","Long_terme", "Court_terme")]
+kable(head(taux))
+
+```
+
+## Indices boursiers
+
+### EURO STOXX 50
+
+L’*EURO STOXX 50* est un indice boursier regroupant les 50 principales sociétés cotées de la zone euro, sélectionnées principalement en fonction de leur capitalisation boursière flottante. Il constitue un indicateur de la santé économique et des performances des marchés financiers au sein de la zone euro. Le graphique présenté ci-dessous illustre l’évolution des valeurs maximales et minimales de cet indice deouis $2015$ jusqu'en $2025$.
+
+```{r, include=FALSE}
+library(tidyquant)
+monthly_STOXX50E <- tq_get("^STOXX50E",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")
+monthly_STOXX50E<-monthly_STOXX50E%>%filter(year(date)>2014)
+
+kable(head(monthly_STOXX50E))
+```
+
+### Le Standard & Poor’s 500 (S&P 500)
+
+Le S&P 500 est un indice boursier large représentant les 500 plus grandes sociétés cotées aux États-Unis, pondérées en fonction de leur capitalisation boursière flottante. Il est largement utilisé comme référence du marché actions américain et constitue un indicateur clé de la performance économique et financière du pays. L’évolution des valeurs maximales et minimales de cet indice entre 2015 et 2025, présentée dans le graphique ci-dessous, permet d’analyser la volatilité du marché ainsi que l’impact des événements macroéconomiques et géopolitiques sur les marchés financiers américains
+
+```{r}
+monthly_SP500 <- tq_get("^GSPC",
+                        from = "2000-01-01",
+                        to = "2025-01-01",
+                        periodicity = "monthly")
+
+monthly_SP500 <- monthly_SP500 %>% 
+  filter(year(date) > 2014)
+
+kable(head(monthly_SP500))
+```
+
+### L'indice CAC 40
+
+L’indice *CAC 40* constitue le principal indice boursier de la Bourse de Paris, reflétant la performance des 40 actions les plus importantes et les plus activement négociées sur Euronext Paris. Le graphique ci-après illustre l’évolution de ses valeurs maximales et minimales au fil du temps.
+
+```{r, include=FALSE}
+CA_40_month <- tq_get("^FCHI",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")%>%filter(year(date)>2014)
+
+kable(head(CA_40_month))
+```
+
+#### L'indice DAX
+
+Le DAX (Deutscher Aktienindex) est l’indice de référence du marché boursier allemand, regroupant les 40 principales sociétés cotées à la Bourse de Francfort, sélectionnées principalement en fonction de leur capitalisation boursière flottante. C'est l'équivalent allemend du CAC 40. Le graphique ci-après représente les variation de cet indice sur la période $2015-2025.$
+
+```{r}
+monthly_DAX <- tq_get("^GDAXI",
+                      from = "2015-01-01",
+                      to   = "2025-01-01",
+                      periodicity = "monthly") %>%
+  filter(year(date) >= 2015)
+
+kable(head(monthly_DAX))
+
+```
+
+### Les indices macros
+
+#### Le produit intérieur brut (en million d'euros courant)
+
+Le produit intérieur brut (PIB) correspond à la somme des valeurs ajoutées générées par l’ensemble des activités économiques d’un pays sur une période donnée. Il constitue un indicateur du niveau d’activité économique. Une augmentation du PIB traduit une expansion de l’activité économique, susceptible d’influencer le volume et l’intensité de l’activité assurantielle. La figure ci-après illustre l’évolution du PIB de la France sur la période 2010-2022.
+
+```{r}
+
+url <- "https://static.data.gouv.fr/resources/produit-interieur-brut-pib-de-la-france/20231223-213736/pib-france.csv"
+
+pib <- read_csv(url)%>% filter(annee > 2014 )
+
+kable(head(pib))
+
+```
+
+#### Le taux d'inflation
+
+Le taux d’inflation est mesuré par la variation de l’indice des prix à la consommation (IPC). Une tendance à la hausse de l’IPC traduit une augmentation du coût de la vie. L’inflation peut influencer la solvabilité des assureurs en modifiant le taux d’intérêt réel. Par ailleurs, une inflation élevée entraîne généralement une augmentation de la sévérité des sinistres, ce qui peut avoir un impact direct sur le SCR.
+
+```{r, include=FALSE}
+
+ipc <- read_delim("ipc.csv", delim = ";", 
+    escape_double = FALSE, trim_ws = TRUE)
+
+ipc<- ipc[6:dim(ipc)[1],c(1,2)]%>%rename( "ipc"=names(ipc)[2], "annee"=names(ipc)[1])%>%mutate(ipc=as.numeric(ipc))
+
+kable(head(ipc))
+
+```
+
+## Imputation donnees manquantes
+
+```{r,include=FALSE}
+df_quarterly <- assur %>%
+  filter(Remise %in% c("T1", "T2", "T3", "T4"))
+
+df_annual <- assur %>%
+  filter(Remise == "Annuel")
+
+stats_annuelles <- df_annual %>%
+  select(Annee, SOCIETE, Val_Annuelle = SCR)
+
+taux_individuels <- df_quarterly %>%
+  inner_join(stats_annuelles, by = c("Annee", "SOCIETE")) %>%
+  mutate(
+    Val_Trim = SCR,
+    Taux_Evol_Ent = Val_Annuelle / Val_Trim - 1
+  )
+
+ratios_croissance <- taux_individuels %>%
+  group_by(Annee, Remise) %>%
+  summarise(
+    Moyenne_Taux_Evolution = mean(Taux_Evol_Ent, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+df_quarterly_filled <- df_quarterly %>%
+  left_join(ratios_croissance, by = c("Annee", "Remise")) %>%
+  left_join(stats_annuelles, by = c("Annee", "SOCIETE")) %>%
+  mutate(
+    SCR = ifelse(
+      is.na(SCR),
+      Val_Annuelle / (1 + Moyenne_Taux_Evolution),
+      SCR
+    )
+  )
+```
+
+# Régression
+## Traitement des indices financiers (Log-Rendements)
+
+Pour chaque indice boursier (S&P 500, EURO STOXX 50, DAX, CAC 40), nous effectuons deux transformations majeures pour assurer la pertinence de l'analyse :
+
+Agrégation trimestrielle : Afin de faire correspondre les données boursières aux dates de remise des rapports de solvabilité, nous retenons la dernière valeur de clôture enregistrée pour chaque trimestre.
+
+Calcul des rendements logarithmiques : Nous utilisons la formule $r_t = \ln(P_t) - \ln(P_{t-1})$. Les log-rendements sont préférés car ils permettent de traiter des séries temporelles stationnaires et facilitent la comparaison entre indices de niveaux de prix différents.
+
+
+```{r,echo=FALSE}
+#Nettoyage des données
+library(dplyr)
+library(janitor)
+
+assur <- assur %>% clean_names()
+
+data_assur <- df_quarterly_filled %>%
+  group_by(Annee, Remise) %>%
+  summarise(
+    ratio_moyen = mean(RATIO, na.rm = TRUE),
+    .groups = "drop"
+  )
+data_assur <- data_assur %>%
+  mutate(
+    trimestre = paste0(Annee, "-", Remise)
+  )
+data_assur$annee <- as.numeric(data_assur$Annee)
+```
+
+### Traitement SP500
+
+```{r,echo=FALSE}
+SP500_trim <- monthly_SP500 %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_sp500 = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+
+kable(head(SP500_trim))
+```
+
+### Traitement STOXX50E
+
+```{r,echo=FALSE}
+monthly_STOXX50E_trim <- monthly_STOXX50E %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_stoxx = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+
+kable(head(monthly_STOXX50E_trim))
+```
+
+### Traitement DAX
+
+```{r,echo=FALSE}
+monthly_DAX_trim <- monthly_DAX %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_dax = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+
+kable(head(monthly_DAX_trim))
+```
+
+### Traitement CAC40
+
+```{r,echo=FALSE}
+
+CA_40_month <- CA_40_month %>%
+  mutate(
+    date = as.Date(date),
+    annee = lubridate::year(date),
+    trimestre = paste0(annee, "-T", lubridate::quarter(date))
+  ) %>%
+  group_by(trimestre) %>%
+  summarise(
+    close = last(close),
+    .groups = "drop"
+  ) %>%
+  arrange(trimestre) %>%
+  mutate(
+    rendement_CAC40 = c(NA, diff(log(close)))
+  )
+
+kable(head(CA_40_month))
+```
+
+### Traitement IPC
+
+L'IPC est moyenné par trimestre pour refléter l'inflation trimestrielle moyenne.
+
+```{r,echo=FALSE}
+library(tidyverse)
+library(lubridate)
+
+# Création de ipc_trim avec le format "ANNEE-TX" pour matcher data_final
+ipc_trim <- ipc %>%
+  mutate(date_temp = ym(annee)) %>%
+  mutate(
+    annee_num = year(date_temp),
+    trimestre_num = quarter(date_temp)
+  ) %>%
+  group_by(annee_num, trimestre_num) %>%
+  summarise(ipc_moy = mean(ipc, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    remise = paste0("T", trimestre_num),
+    # ICI : On remplace l'underscore par un tiret pour correspondre à data_final
+    trimestre = paste0(annee_num, "-T", trimestre_num) 
+  ) %>%
+  filter(annee_num >= 2016 & annee_num <= 2025) %>%
+  select(annee = annee_num, remise, trimestre, ipc_moy)
+
+kable(head(ipc_trim))
+```
+
+### Traitement PIB
+
+Le PIB est transformé en taux de croissance annuel via la différence des logarithmes.
+
+```{r,echo=FALSE}
+pib <- pib %>%
+  clean_names() %>%
+  arrange(annee) %>%
+  mutate(
+    croissance_pib = c(NA, diff(log(pib)))
+  )
+
+kable(head(pib))
+```
+
+### Traitement taux
+
+```{r,echo=FALSE}
+taux <- taux %>% clean_names()
+
+taux_clean <- taux %>%
+  rename(
+    annee = annees,
+    taux_long = long_terme,
+    taux_court = court_terme
+  ) %>%
+  select(annee, taux_long, taux_court) %>%
+  arrange(annee)
+
+kable(head(taux_clean))
+```
+
+### Fusion des tables finales
+
+Nous procédons à la jointure finale en utilisant le trimestre comme clé d'alignement pour les données boursières et l'année pour les variables macroéconomiques et les taux.
+
+```{r,echo=FALSE}
+
+# 1. Vérification et préparation des tables satellites
+pib_clean <- pib %>% 
+  mutate(annee = as.numeric(as.character(annee))) %>% 
+  select(annee, croissance_pib)
+
+taux_clean_num <- taux_clean %>% 
+  mutate(annee = as.numeric(as.character(annee)))
+
+ipc_trim_clean <- ipc_trim %>% 
+  mutate(annee = as.numeric(as.character(annee))) %>%
+  select(annee, remise, trimestre, ipc_moy)
+
+# 2. Construction de la table finale
+data_final <- data_assur %>%
+  # On nettoie les noms d'abord
+  clean_names() %>%
+  # On s'assure que annee est numérique dès le début
+  mutate(annee = as.numeric(as.character(annee))) %>%
+  
+  # Jointures sur le trimestre (Pas besoin d'année ici)
+  left_join(monthly_STOXX50E_trim %>% select(trimestre, rendement_stoxx), by = "trimestre") %>%
+  left_join(CA_40_month %>% select(trimestre, rendement_CAC40), by = "trimestre") %>%
+  left_join(monthly_DAX_trim %>% select(trimestre, rendement_dax), by = "trimestre") %>%
+  left_join(SP500_trim %>% select(trimestre, rendement_sp500), by = "trimestre") %>%
+  
+  # Jointure IPC : Attention, vérifie que 'remise' existe bien dans data_assur après clean_names
+  # Si elle s'appelait "Remise", elle est devenue "remise".
+  left_join(ipc_trim_clean, by = c("annee", "remise", "trimestre")) %>%
+  
+  # Jointures sur l'année uniquement
+  left_join(pib_clean, by = "annee") %>%
+  left_join(taux_clean_num, by = "annee") %>%
+  
+  # Organisation finale
+  arrange(annee, remise)
+
+data_final %>%
+  head() %>%
+  kbl(booktabs = TRUE, caption = "Fusion des tables finales") %>%
+  kable_styling(latex_options = c("hold_position", "scale_down")) %>%
+  landscape()
+```
+
+## Résultats de la Régression
+### Spécification du modèle
+Le modèle de régression linéaire multiple s'écrit de la manière suivante :
+$$
+\begin{aligned}
+Ratio\_Moyen_t = \beta_0 &+ \beta_1 \Delta \ln(Stoxx_t) + \beta_2 \Delta \ln(CAC40_t) + \beta_3 \Delta \ln(DAX_t) + \beta_4 \Delta \ln(SP500_t) \\
+&+ \beta_5 \Delta PIB_t + \beta_6 IPC\_Moy_t + \beta_7 Taux\_C_t + \beta_8 Taux\_L_t + \epsilon_t
+\end{aligned}
+$$
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# On crée le modèle
+modele <- lm(
+  ratio_moyen ~ rendement_stoxx + rendement_CAC40 + rendement_dax + rendement_sp500 + croissance_pib + ipc_moy + taux_court + taux_long,
+  data = data_final
+)
+library(modelsummary)
+library(kableExtra)
+library(broom)
+library(knitr)
+
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+modelsummary(
+  modele,
+  # 'estimate' définit la stat principale, 'statistic' définit les suivantes
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  # Shape définit l'organisation : 'term' en lignes, 'statistic' en colonnes
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression (Évolutions)",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+### Intérprétation des résultats
+
+L'analyse des coefficients permet d'identifier les vecteurs de volatilité du ratio de solvabilité :
+Il est d'abord important de noter que l'ensemble de nos coefficients estimés (sauf constante) sont non significatifs au seuil de 10%. Ce qui nous amène à douter de la qualité de cette estimation.
+Une constante significative et positive, nous indique que les assureurs maintiennent des ratios de solvabilités importants quelque soit la conjoncture économique. Le R2 du modèle est assez élevé, cela pourrait nous indiquer une éventuelle régression falacieuse.
+
+Sensibilité aux marchés Actions : La hausse des CAC40 et STOXX entraient une hausse du ratio de solvabilité des assureurs. Cependant, la hausse du DAX et du SP500 entrainerait une baisse du ratio de solvabilité. Ceci étant très probablement dû à un problème de multicolinéarité des indices boursiers. POur y remédier nous pourrons ne retenir qu'un indice ou aggrérer les 4 indices à l'aide d'une ACP. 
+
+Sensibilité aux Taux : Une hausse des taux longs entraine une réduction du ratio de solvabilité, probalement liée à la baisse des fonds propres des assureurs. La hausse des taux court, elle, entraine une hausse des ratios de solvabilité ce qui coincide avec notre analyse des rapports de solvabilité des assureurs. 
+
+Inflation : L'inflation impacte négativement le ratio de solvabilité des assureurs, ce qui est cohérent avec notre analyse initale. Cependant, son effet semble être très faible avec un coefficient de -0,0024. 
+
+Produit Intérieur Brut : Le PIB entrainerait une hausse des ratios de solvabilité.
+
+## Modèle sans PIB et ne retenant qu'un indice boursier
+
+Pour cette seconde régression, nous retirons la variable croissant_PIB car elle présente un grand nombre de valeurs manquante, notamment en fin de période, ce qui entraine une perte de données trop importante. Nous avons églameent décider de ne garder que l'indice STOXX pour éviter un problème de colinéraité. De plus le STOXX nous semble être un bon choix car les assureurs européens investissent davantage sur le marché européen, il capte donc la dynamique du CAC40 et du DAX.
+
+### Spécification du modèle
+
+$$
+\begin{aligned}
+Ratio\_Moyen_t = \beta_0 &+ \beta_1 \Delta \ln(Stoxx_t) + \beta_3 IPC\_Moy_t \\
+&+ \beta_4 Taux\_C_t + \beta_5 Taux\_L_t + \epsilon_t
+\end{aligned}
+$$
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+modele_simple <- lm(
+  ratio_moyen ~ rendement_stoxx + ipc_moy + taux_court + taux_long,
+  data = data_final
+)
+
+library(broom)
+library(knitr)
+
+
+modelsummary(
+  modele_simple,
+  # 'estimate' définit la stat principale, 'statistic' définit les suivantes
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  # Shape définit l'organisation : 'term' en lignes, 'statistic' en colonnes
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression (Évolutions)",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+Le R2 du modèle est plus élevé que le précédent, cependant la qualité statistique semble de nouveau faible avec des coefficients non significatifs, probablement car le ratio de solvabilité est en niveau. Les signes des coefficients se sont tous inversés. Cela renforce la possibilité de régression falacieuse et d'une non-stationnarité de la série. Nous allons donc désormais estimer un modèle ayant pour variable dépendante le ratio de solvabilité en différence. Nos variables doivent donc désormais expliquer les variations de ce ratio.
+
+## Régression en différences
+
+### Spécification du modèle
+
+$$
+\Delta Ratio\_Moyen_t = \beta_0 + \beta_1 \Delta \ln(Stoxx_t) + \beta_2 \Delta \ln(IPC_t) + \beta_3 \Delta Taux\_C_t + \beta_4 \Delta Taux\_L_t + \epsilon_t
+$$
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#Ajout des variables en différence à la base
+data_final <- data_final %>%
+  arrange(annee, remise) %>%
+  mutate(
+    # On calcule la variation du ratio (T - T-1)
+    diff_ratio = ratio_moyen - lag(ratio_moyen),
+    ipc_diff = (ipc_moy - lag(ipc_moy)) / lag(ipc_moy),
+    diff_taux_court = taux_court - lag(taux_court),
+    diff_taux_long = taux_long - lag(taux_long)
+  )
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+library(modelsummary)
+
+modele_evolution <- lm(diff_ratio ~ rendement_stoxx + ipc_diff + diff_taux_court + diff_taux_long, 
+                       data = data_final)
+
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+# Génération du tableau
+modelsummary(
+  modele_evolution,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression (Évolutions)",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+Le modèle en différence semble plus réaliste avec un R2 de 0,073. Les coefficients estimés sont toujours non significatifs. La constante est elle aussi non significative, ce qui nous indique qu'il n'y a pas de drift dans notre série, le ratio est donc stable sans variation exterieure. 
+La faiblesse des résultats nous indique que l'évolution du ratio de solvabilité dépend également d'autres facteurs non inclus dans notre modèle. 
+
+La solvabilité des assureurs semble très peu sensible aux chocs des marchés de court terme. Une hausse de l'inflation a un impact négatif marqué sur l'évolution du ratio de solvabilité comme relevé dans les rapports des compagnies d'assurance.
+
+Le coefficient associé à la variation des taux longs est désormais positif (0,0423), bien que non significatif au seuil de 5%. Cette relation positive est cohérente avec la structure du bilan des assureurs sous Solvabilité II : une hausse des taux d'intérêt entraîne une diminution de la valeur actuelle des engagements au passif (effet d'actualisation), ce qui tend à accroître les fonds propres et donc à améliorer le ratio de solvabilité. L'absence de significativité statistique suggère néanmoins que les stratégies de couverture et les mécanismes de lissage réglementaire (Volatility Adjustment) absorbent l'essentiel de la volatilité des taux sur la période étudiée.
+
+D'autre part, le coefficicient associé à l'indice STOXX est de nouveau positif, la hausse des fonds propres est donc plus forte que l'augmentation de l'exigence de capital (SCR marché).
+
+L'absence de corrélation forte entre les fluctuations macro-financières trimestrielles et l'évolution du ratio de solvabilité témoigne de l'efficacité des outils de gestion des risques et des mécanismes de lissage prudentiel prévus par la réglementation.
+
+### Analyse des résidus du modèle en différence
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.width=6, fig.height=3, fig.align='center'}
+library(lmtest) # Pour le test de Durbin-Watson et Breusch-Pagan
+library(car)    # Pour la normalité
+
+#Visulisation des résidus
+# Récupération des résidus
+residus <- data.frame(res = residuals(modele_evolution))
+
+# Graphique combiné (Histogramme + Densité + Normale)
+ggplot(residus, aes(x = res)) +
+  geom_histogram(aes(y = ..density..), bins = 15, fill = "steelblue", alpha = 0.5) +
+  geom_density(color = "blue", size = 1) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(residus$res), sd = sd(residus$res)), 
+                color = "red", linetype = "dashed", size = 1) +
+  theme_minimal(base_size = 10) +
+  labs(title = "Distribution des résidus", x = "Résidus", y = "Densité") +
+  # On retire coord_fixed qui déforme souvent si les échelles X et Y sont trop différentes
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+# Récupération des résidus
+res <- residuals(modele_evolution)
+
+# Calcul de l'ACF
+bacf <- acf(res, plot = FALSE)
+bacfdf <- with(bacf, data.frame(lag, acf))
+
+# Calcul de l'intervalle de confiance (seuil de significativité à 5%)
+# Formule : +/- 1.96 / sqrt(n)
+ci <- 1.96 / sqrt(length(res))
+
+# Graphique ACF
+ggplot(data = bacfdf[-1, ], aes(x = lag, y = acf)) +
+  geom_segment(aes(xend = lag, yend = 0), color = "steelblue", size = 0.7) + # Barres plus fines
+  geom_hline(yintercept = c(ci, -ci), color = "red", linetype = "dashed", size = 0.5) +
+  geom_hline(yintercept = 0, color = "black") +
+  theme_minimal(base_size = 9) +
+  labs(title = "Fonction d'Autocorrélation (ACF)", x = "Retards (Lags)", y = "ACF") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+library(lmtest)
+
+# Calcul des tests
+dw <- dwtest(modele_evolution)
+bp <- bptest(modele_evolution)
+sh <- shapiro.test(res)
+lb <- Box.test(res, lag = 10, type = "Ljung-Box") # Test sur les 10 premiers lags
+
+# Création du tableau de synthèse
+diag_table <- data.frame(
+  Test = c("Autocorrélation (Durbin-Watson)", 
+           "Indépendance Globale (Ljung-Box)",
+           "Homoscédasticité (Breusch-Pagan)", 
+           "Normalité (Shapiro-Wilk)"),
+  Statistique = c(round(dw$statistic, 4), round(lb$statistic, 4), 
+                  round(bp$statistic, 4), round(sh$statistic, 4)),
+  P_value = c(round(dw$p.value, 4), round(lb$p.value, 4), 
+              round(bp$p.value, 4), round(sh$p.value, 4)),
+  Verdict = c(
+    ifelse(dw$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée"),
+    ifelse(lb$p.value > 0.05, "Bruit blanc confirmé", "Hypothèse rejetée"),
+    ifelse(bp$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée"),
+    ifelse(sh$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée")
+  )
+)
+
+kable(diag_table, booktabs = TRUE, caption = "Tests sur les résidus") %>%
+  kable_styling(latex_options = c("striped", "hold_position"), full_width = FALSE)
+```
+
+L'analyse des résidus confirme la validité statistique du modèle en différences. Les tests démontrent que les erreurs sont homoscédastiques et ne présentent aucune autocorrélation significative (confirmé par l'ACF et le test de Ljung-Box). La non normalité des résidus n'induit pas de biais dans nos estimations.
+
+Ces résultats garantissent que les coefficients estimés ne sont pas biaisés et que la faible part de variance expliquée (R2=7,3%) n'est pas due à une mauvaise spécification du modèle mais bien à la stabilité intrinsèque du ratio de solvabilité, dont les variations trimestrielles sont largement absorbées par les mécanismes prudentiels.
