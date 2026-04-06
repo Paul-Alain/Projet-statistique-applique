@@ -200,25 +200,23 @@ Agrégation trimestrielle : Afin de faire correspondre les données boursières 
 
 Calcul des rendements logarithmiques : Nous utilisons la formule $r_t = \ln(P_t) - \ln(P_{t-1})$. Les log-rendements sont préférés car ils permettent de traiter des séries temporelles stationnaires et facilitent la comparaison entre indices de niveaux de prix différents.
 
-
 ```{r,echo=FALSE}
 #Nettoyage des données
-library(dplyr)
 library(janitor)
-
-assur <- assur %>% clean_names()
-
 data_assur <- df_quarterly_filled %>%
-  group_by(Annee, Remise) %>%
+  group_by(Annee, Remise, Nature) %>%
   summarise(
     ratio_moyen = mean(RATIO, na.rm = TRUE),
+    fonds_propres_moyens = mean(`FONDS PROPRES`, na.rm = TRUE),
+    scr_moyen = mean(SCR, na.rm = TRUE),
     .groups = "drop"
-  )
-data_assur <- data_assur %>%
+  ) %>%
+  # On fait tout dans le même bloc propre
   mutate(
-    trimestre = paste0(Annee, "-", Remise)
-  )
-data_assur$annee <- as.numeric(data_assur$Annee)
+    trimestre = paste0(Annee, "-", Remise),
+    Annee = as.numeric(Annee) 
+  ) %>%
+  clean_names()
 ```
 
 ### Traitement SP500
@@ -379,19 +377,59 @@ kable(head(pib))
 
 ### Traitement taux
 
+Nous avons introduit de nouvelles données de taux journalières. Nous avons donc aggréger les valeurs par trimestre pour qu'elles correspondent aux données des assureurs. 
+
+
 ```{r,echo=FALSE}
-taux <- taux %>% clean_names()
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(janitor)
 
-taux_clean <- taux %>%
+# 1. On lit le fichier qu'on a créé à l'étape 1
+if (file.exists("mes_taux_fred.rds")) {
+  taux_data_raw <- readRDS("mes_taux_fred.rds")
+  
+  # 2. On traite les données exactement comme tu voulais
+  taux_trimestriel <- taux_data_raw %>%
+    rename(price = 3) %>% 
+    filter(!is.na(price)) %>%
+    pivot_wider(names_from = symbol, values_from = price) %>%
+    rename(taux_long = DGS10, taux_court = FEDFUNDS) %>%
+    mutate(
+      annee = year(date),
+      remise = paste0("T", quarter(date))
+    ) %>%
+    group_by(annee, remise) %>%
+    summarise(
+      taux_long_trim = mean(taux_long, na.rm = TRUE),
+      taux_court_trim = mean(taux_court, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(trimestre = paste0(annee, "-", remise))
+    
+} else {
+  stop("Le fichier 'mes_taux_fred.rds' est introuvable. As-tu bien fait l'étape 1 dans la console ?")
+}
+
+# Pour éviter l'erreur clean_names plus loin
+taux <- janitor::clean_names(taux_trimestriel)
+```
+
+```{r,echo=FALSE}
+# On utilise l'objet créé au bloc précédent
+taux_clean <- taux_trimestriel %>%
+  # On ne renomme que ce qui est nécessaire pour ton rapport
   rename(
-    annee = annees,
-    taux_long = long_terme,
-    taux_court = court_terme
+    taux_long = taux_long_trim,
+    taux_court = taux_court_trim
   ) %>%
-  select(annee, taux_long, taux_court) %>%
-  arrange(annee)
+  # On sélectionne les colonnes propres
+  select(annee, remise, trimestre, taux_long, taux_court) %>%
+  arrange(annee, remise)
 
-kable(head(taux_clean))
+# Affichage du tableau dans le rapport
+kable(head(taux_clean), caption = "Aperçu des taux d'intérêt après nettoyage")
 ```
 
 ### Fusion des tables finales
@@ -401,11 +439,20 @@ Nous procédons à la jointure finale en utilisant le trimestre comme clé d'ali
 ```{r,echo=FALSE}
 
 # 1. Vérification et préparation des tables satellites
+data_assur <- data_assur %>%
+  # On renomme tout en minuscules pour être tranquille
+  rename_with(tolower) %>% 
+  # On s'assure que les colonnes clés existent bien
+  mutate(
+    annee = as.numeric(annee),
+    trimestre = paste0(annee, "-", remise)
+  )
+
 pib_clean <- pib %>% 
   mutate(annee = as.numeric(as.character(annee))) %>% 
   select(annee, croissance_pib)
 
-taux_clean_num <- taux_clean %>% 
+taux_clean_num <- taux_trimestriel %>% 
   mutate(annee = as.numeric(as.character(annee)))
 
 ipc_trim_clean <- ipc_trim %>% 
@@ -424,18 +471,51 @@ data_final <- data_assur %>%
   left_join(CA_40_month %>% select(trimestre, rendement_CAC40), by = "trimestre") %>%
   left_join(monthly_DAX_trim %>% select(trimestre, rendement_dax), by = "trimestre") %>%
   left_join(SP500_trim %>% select(trimestre, rendement_sp500), by = "trimestre") %>%
-  
-  # Jointure IPC : Attention, vérifie que 'remise' existe bien dans data_assur après clean_names
+  left_join(taux_clean_num %>% select(trimestre, taux_long_trim, taux_court_trim), by = "trimestre") %>%
   # Si elle s'appelait "Remise", elle est devenue "remise".
   left_join(ipc_trim_clean, by = c("annee", "remise", "trimestre")) %>%
   
-  # Jointures sur l'année uniquement
-  left_join(pib_clean, by = "annee") %>%
-  left_join(taux_clean_num, by = "annee") %>%
-  
   # Organisation finale
   arrange(annee, remise)
+```
 
+Nous avons enrichit la table final en calculant les différences logarithmiques des variables qui seront utilisées dans la régression en différence.Cela permet d'interpréter les variations comme des taux de croissance. Les taux d’intérêt sont quant à eux exprimés en différences premières, correspondant à des variations en niveau.
+
+Les transfomrations sont définies comme suit :
+
+\begin{align}
+\Delta Ratio\_moyen_t &= \ln(Ratio\_moyen_t) - \ln(Ratio\_moyen_{t-1}) \\
+\Delta \ln(Stoxx_t) &= \ln(Stoxx_t) - \ln(Stoxx_{t-1}) \\
+\Delta \ln(IPC_t) &= \ln(IPC_t) - \ln(IPC_{t-1}) \\
+\Delta Taux\_C_t &= Taux\_C_t - Taux\_C_{t-1} \\
+\Delta Taux\_L_t &= Taux\_L_t - Taux\_L_{t-1}
+\end{align}
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+data_final <- data_final %>%
+  # 1. Tri pour que le lag() suive bien la chronologie
+  arrange(nature, annee, remise) %>%
+  
+  # 2. Groupe par secteur pour ne pas mélanger Vie et Non-Vie
+  group_by(nature) %>%
+  
+  # 3. Calculs des variations (Log-diff pour les milliards, Diff simple pour les taux)
+  mutate(
+    # --- LOG-DIFF (Taux de croissance en %) ---
+    diff_ratio         = log(as.numeric(ratio_moyen)) - log(lag(as.numeric(ratio_moyen))),
+    diff_fonds_propres = log(fonds_propres_moyens) - log(lag(fonds_propres_moyens)),
+    diff_scr           = log(scr_moyen) - log(lag(scr_moyen)),
+    diff_ipc           = log(ipc_moy) - log(lag(ipc_moy)),
+    
+    # --- DIFF SIMPLE (Variation en points) ---
+    diff_taux_court    = taux_court_trim - lag(taux_court_trim),
+    diff_taux_long     = taux_long_trim - lag(taux_long_trim)
+  ) %>%
+  
+  # 4. On enlève le groupement et on nettoie les NA créés par le lag()
+  ungroup() %>%
+  filter(!is.na(diff_ratio))
 data_final %>%
   head() %>%
   kbl(booktabs = TRUE, caption = "Fusion des tables finales") %>%
@@ -443,150 +523,82 @@ data_final %>%
   landscape()
 ```
 
-## Résultats de la Régression
-### Spécification du modèle
-Le modèle de régression linéaire multiple s'écrit de la manière suivante :
-$$
-\begin{aligned}
-Ratio\_Moyen_t = \beta_0 &+ \beta_1 \Delta \ln(Stoxx_t) + \beta_2 \Delta \ln(CAC40_t) + \beta_3 \Delta \ln(DAX_t) + \beta_4 \Delta \ln(SP500_t) \\
-&+ \beta_5 \Delta PIB_t + \beta_6 IPC\_Moy_t + \beta_7 Taux\_C_t + \beta_8 Taux\_L_t + \epsilon_t
-\end{aligned}
-$$
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-# On crée le modèle
-modele <- lm(
-  ratio_moyen ~ rendement_stoxx + rendement_CAC40 + rendement_dax + rendement_sp500 + croissance_pib + ipc_moy + taux_court + taux_long,
-  data = data_final
-)
-library(modelsummary)
-library(kableExtra)
-library(broom)
-library(knitr)
+```{r,echo=FALSE}
+#Création une table Non-Vie
+data_non_vie <- data_final %>%
+  filter(nature == "Non Vie")
 
-stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
-
-modelsummary(
-  modele,
-  # 'estimate' définit la stat principale, 'statistic' définit les suivantes
-  estimate = "estimate",
-  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
-  # Shape définit l'organisation : 'term' en lignes, 'statistic' en colonnes
-  shape = term ~ statistic, 
-  fmt = 4, 
-  title = "Résultats complets de la régression (Évolutions)",
-  gof_map = c("nobs", "r.squared", "adj.r.squared"),
-  output = "kableExtra"
-) %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
+#Création une table Vie
+data_vie <- data_final %>%
+  filter(nature == "Vie/Capitalisation")
 ```
 
-### Intérprétation des résultats
+## Régression en différences du ratio de solvabilité
 
-L'analyse des coefficients permet d'identifier les vecteurs de volatilité du ratio de solvabilité :
-Il est d'abord important de noter que l'ensemble de nos coefficients estimés (sauf constante) sont non significatifs au seuil de 10%. Ce qui nous amène à douter de la qualité de cette estimation.
-Une constante significative et positive, nous indique que les assureurs maintiennent des ratios de solvabilités importants quelque soit la conjoncture économique. Le R2 du modèle est assez élevé, cela pourrait nous indiquer une éventuelle régression falacieuse.
-
-Sensibilité aux marchés Actions : La hausse des CAC40 et STOXX entraient une hausse du ratio de solvabilité des assureurs. Cependant, la hausse du DAX et du SP500 entrainerait une baisse du ratio de solvabilité. Ceci étant très probablement dû à un problème de multicolinéarité des indices boursiers. POur y remédier nous pourrons ne retenir qu'un indice ou aggrérer les 4 indices à l'aide d'une ACP. 
-
-Sensibilité aux Taux : Une hausse des taux longs entraine une réduction du ratio de solvabilité, probalement liée à la baisse des fonds propres des assureurs. La hausse des taux court, elle, entraine une hausse des ratios de solvabilité ce qui coincide avec notre analyse des rapports de solvabilité des assureurs. 
-
-Inflation : L'inflation impacte négativement le ratio de solvabilité des assureurs, ce qui est cohérent avec notre analyse initale. Cependant, son effet semble être très faible avec un coefficient de -0,0024. 
-
-Produit Intérieur Brut : Le PIB entrainerait une hausse des ratios de solvabilité.
-
-## Modèle sans PIB et ne retenant qu'un indice boursier
-
-Pour cette seconde régression, nous retirons la variable croissant_PIB car elle présente un grand nombre de valeurs manquante, notamment en fin de période, ce qui entraine une perte de données trop importante. Nous avons églameent décider de ne garder que l'indice STOXX pour éviter un problème de colinéraité. De plus le STOXX nous semble être un bon choix car les assureurs européens investissent davantage sur le marché européen, il capte donc la dynamique du CAC40 et du DAX.
-
-### Spécification du modèle
+### Spécification du modèle - Vie
 
 $$
-\begin{aligned}
-Ratio\_Moyen_t = \beta_0 &+ \beta_1 \Delta \ln(Stoxx_t) + \beta_3 IPC\_Moy_t \\
-&+ \beta_4 Taux\_C_t + \beta_5 Taux\_L_t + \epsilon_t
-\end{aligned}
+\Delta \ln(Ratio\_moyen_t) = \alpha 
++ \beta_1 \Delta \ln(Stoxx_t) 
++ \beta_2 \Delta \ln(IPC_t) 
++ \beta_3 \Delta Taux\_C_t 
++ \beta_4 \Delta Taux\_L_t 
++ \varepsilon_t
 $$
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-modele_simple <- lm(
-  ratio_moyen ~ rendement_stoxx + ipc_moy + taux_court + taux_long,
-  data = data_final
-)
-
-library(broom)
-library(knitr)
-
-
-modelsummary(
-  modele_simple,
-  # 'estimate' définit la stat principale, 'statistic' définit les suivantes
-  estimate = "estimate",
-  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
-  # Shape définit l'organisation : 'term' en lignes, 'statistic' en colonnes
-  shape = term ~ statistic, 
-  fmt = 4, 
-  title = "Résultats complets de la régression (Évolutions)",
-  gof_map = c("nobs", "r.squared", "adj.r.squared"),
-  output = "kableExtra"
-) %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
-```
-Le R2 du modèle est plus élevé que le précédent, cependant la qualité statistique semble de nouveau faible avec des coefficients non significatifs, probablement car le ratio de solvabilité est en niveau. Les signes des coefficients se sont tous inversés. Cela renforce la possibilité de régression falacieuse et d'une non-stationnarité de la série. Nous allons donc désormais estimer un modèle ayant pour variable dépendante le ratio de solvabilité en différence. Nos variables doivent donc désormais expliquer les variations de ce ratio.
-
-## Régression en différences
-
-### Spécification du modèle
-
-$$
-\Delta Ratio\_Moyen_t = \beta_0 + \beta_1 \Delta \ln(Stoxx_t) + \beta_2 \Delta \ln(IPC_t) + \beta_3 \Delta Taux\_C_t + \beta_4 \Delta Taux\_L_t + \epsilon_t
-$$
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-#Ajout des variables en différence à la base
-data_final <- data_final %>%
-  arrange(annee, remise) %>%
-  mutate(
-    # On calcule la variation du ratio (T - T-1)
-    diff_ratio = ratio_moyen - lag(ratio_moyen),
-    ipc_diff = (ipc_moy - lag(ipc_moy)) / lag(ipc_moy),
-    diff_taux_court = taux_court - lag(taux_court),
-    diff_taux_long = taux_long - lag(taux_long)
-  )
-```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 library(modelsummary)
 
-modele_evolution <- lm(diff_ratio ~ rendement_stoxx + ipc_diff + diff_taux_court + diff_taux_long, 
-                       data = data_final)
-
+model_ratio_vie <- lm(diff_ratio ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_vie)
+summary(model_ratio_vie)
 stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
 
 # Génération du tableau
 modelsummary(
-  modele_evolution,
+  model_ratio_vie,
   estimate = "estimate",
   statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
   shape = term ~ statistic, 
   fmt = 4, 
-  title = "Résultats complets de la régression (Évolutions)",
+  title = "Résultats complets de la régression Vie",
   gof_map = c("nobs", "r.squared", "adj.r.squared"),
   output = "kableExtra"
 ) %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 ```
-Le modèle en différence semble plus réaliste avec un R2 de 0,073. Les coefficients estimés sont toujours non significatifs. La constante est elle aussi non significative, ce qui nous indique qu'il n'y a pas de drift dans notre série, le ratio est donc stable sans variation exterieure. 
+Les coefficients estimés sont toujours non significatifs. La constante est elle aussi non significative, ce qui nous indique qu'il n'y a pas de drift dans notre série, le ratio est donc stable sans variation exterieure. 
 La faiblesse des résultats nous indique que l'évolution du ratio de solvabilité dépend également d'autres facteurs non inclus dans notre modèle. 
+Une hausse de 1% de l'indice Stoxx entraine une hausse de 0,25% du taux de croissance du ratio moyen. La hausse des fonds propres est donc plus forte que l'augmentation de l'exigence de capital (SCR marché). Cependant cet effet n'est pas statistiquement significatif.
 
-La solvabilité des assureurs semble très peu sensible aux chocs des marchés de court terme. Une hausse de l'inflation a un impact négatif marqué sur l'évolution du ratio de solvabilité comme relevé dans les rapports des compagnies d'assurance.
+La solvabilité des assureurs semble très peu sensible aux chocs des marchés de court terme. Une hausse de l'inflation a un impact positif marqué sur l'évolution du ratio de solvabilité. Ce qui semble surprenant.
 
-Le coefficient associé à la variation des taux longs est désormais positif (0,0423), bien que non significatif au seuil de 5%. Cette relation positive est cohérente avec la structure du bilan des assureurs sous Solvabilité II : une hausse des taux d'intérêt entraîne une diminution de la valeur actuelle des engagements au passif (effet d'actualisation), ce qui tend à accroître les fonds propres et donc à améliorer le ratio de solvabilité. L'absence de significativité statistique suggère néanmoins que les stratégies de couverture et les mécanismes de lissage réglementaire (Volatility Adjustment) absorbent l'essentiel de la volatilité des taux sur la période étudiée.
-
-D'autre part, le coefficicient associé à l'indice STOXX est de nouveau positif, la hausse des fonds propres est donc plus forte que l'augmentation de l'exigence de capital (SCR marché).
+Le coefficient associé à la variation des taux longs est désormais positif (0,0511), bien que non significatif au seuil de 5%. Cette relation positive est cohérente avec la structure du bilan des assureurs sous Solvabilité II : une hausse des taux d'intérêt entraîne une diminution de la valeur actuelle des engagements au passif (effet d'actualisation), ce qui tend à accroître les fonds propres et donc à améliorer le ratio de solvabilité. L'absence de significativité statistique suggère néanmoins que les stratégies de couverture et les mécanismes de lissage réglementaire (Volatility Adjustment) absorbent l'essentiel de la volatilité des taux sur la période étudiée.
 
 L'absence de corrélation forte entre les fluctuations macro-financières trimestrielles et l'évolution du ratio de solvabilité témoigne de l'efficacité des outils de gestion des risques et des mécanismes de lissage prudentiel prévus par la réglementation.
 
-### Analyse des résidus du modèle en différence
+### Régression en différence - Non-Vie
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+model_ratio_non_vie <- lm(diff_ratio ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_non_vie)
+summary(model_ratio_vie)
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+# Génération du tableau
+modelsummary(
+  model_ratio_non_vie,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+### Analyse des résidus du modèle en différence Vie
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.width=6, fig.height=3, fig.align='center'}
 library(lmtest) # Pour le test de Durbin-Watson et Breusch-Pagan
@@ -594,7 +606,7 @@ library(car)    # Pour la normalité
 
 #Visulisation des résidus
 # Récupération des résidus
-residus <- data.frame(res = residuals(modele_evolution))
+residus <- data.frame(res = residuals(model_ratio_vie))
 
 # Graphique combiné (Histogramme + Densité + Normale)
 ggplot(residus, aes(x = res)) +
@@ -610,7 +622,7 @@ ggplot(residus, aes(x = res)) +
 
 
 # Récupération des résidus
-res <- residuals(modele_evolution)
+res <- residuals(model_ratio_vie)
 
 # Calcul de l'ACF
 bacf <- acf(res, plot = FALSE)
@@ -632,8 +644,8 @@ ggplot(data = bacfdf[-1, ], aes(x = lag, y = acf)) +
 library(lmtest)
 
 # Calcul des tests
-dw <- dwtest(modele_evolution)
-bp <- bptest(modele_evolution)
+dw <- dwtest(model_ratio_vie)
+bp <- bptest(model_ratio_vie)
 sh <- shapiro.test(res)
 lb <- Box.test(res, lag = 10, type = "Ljung-Box") # Test sur les 10 premiers lags
 
@@ -659,6 +671,54 @@ kable(diag_table, booktabs = TRUE, caption = "Tests sur les résidus") %>%
   kable_styling(latex_options = c("striped", "hold_position"), full_width = FALSE)
 ```
 
-L'analyse des résidus confirme la validité statistique du modèle en différences. Les tests démontrent que les erreurs sont homoscédastiques et ne présentent aucune autocorrélation significative (confirmé par l'ACF et le test de Ljung-Box). La non normalité des résidus n'induit pas de biais dans nos estimations.
+Le test de Ljung Box rejette l'hypothèse nulle d'absence d'autocorrélation des résidus. Notre modèlé n'est donc pas valide statistiquement et ses résultats ne peuvent pas être intérpréter. De plus l'analyse de la fonction d'autocorrélation met en évidence une autocorrélation significative au premier ordre.  
 
-Ces résultats garantissent que les coefficients estimés ne sont pas biaisés et que la faible part de variance expliquée (R2=7,3%) n'est pas due à une mauvaise spécification du modèle mais bien à la stabilité intrinsèque du ratio de solvabilité, dont les variations trimestrielles sont largement absorbées par les mécanismes prudentiels.
+Cette autocorrélation indique une mauvaise spécification dynamique du modèle, suggérant que certaines dépendances temporelles n’étaient pas correctement prises en compte.
+
+Afin de corriger ce problème, nous allons introduire un terme autorégressif d’ordre 1, en incluant la variable dépendante retardée parmi les variables explicatives.
+
+### Ajout d'un retard à notre variable dépendante
+
+$$
+\Delta Ratio\_moyen_t = \alpha 
++ \rho \, \Delta Ratio\_moyen_{t-1}
++ \beta_1 \, \ln(Stoxx_t) 
++ \beta_2 \Delta \ln(IPC_t) 
++ \beta_3 \Delta Taux\_C_t 
++ \beta_4 \Delta Taux\_L_t 
++ \varepsilon_t
+$$
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+library(dplyr)
+
+data_vie <- data_vie %>%
+  mutate(lag_diff_ratio = lag(diff_ratio))
+
+model_ratio_vie_dyn <- lm(
+  diff_ratio ~ lag_diff_ratio + rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long,
+  data = data_vie
+)
+
+modelsummary(
+  model_ratio_vie_dyn,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression Vie avec retard",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+Box.test(residuals(model_ratio_vie_dyn), type = "Ljung-Box")
+acf(residuals(model_ratio_vie_dyn))
+```
+
+Après l'introduction de ce terme retardé, le test d'autocorrélation des résidus ne rejette plus l'hypothèse d'absence d'autocorrélation, ce qui valide cette spécification du modèle.  
+
+Les coefficients deviennent plus significatifs qu'auparavant, mais ils restent tous non significatifs. Le R2 a augmenté pour atteindre un niveau convenable de 0,295.
+
+Le coefficient associé à la variable dépendante retardée est négatif, ce qui traduit une dynamique de retour à la moyenne. Une hausse du ratio à la période précédente tend suggérant que les variations du ratio ne sont pas persistantes mais tendent à se corriger dans le temps.
