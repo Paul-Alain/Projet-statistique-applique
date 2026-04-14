@@ -18,12 +18,14 @@ knitr::opts_chunk$set(
 library(dplyr)
 library(tidyr)
 library(zoo)
+library(janitor)
 library(ggplot2)
 library(knitr)
 library(kableExtra)
 library(glue)
 library(scales)
 library(ggh4x)
+library(urca)
 library(rlang)
 library(shiny)
 library(quantmod)
@@ -419,7 +421,6 @@ taux <- janitor::clean_names(taux_trimestriel)
 ```{r,echo=FALSE}
 # On utilise l'objet créé au bloc précédent
 taux_clean <- taux_trimestriel %>%
-  # On ne renomme que ce qui est nécessaire pour ton rapport
   rename(
     taux_long = taux_long_trim,
     taux_court = taux_court_trim
@@ -440,7 +441,6 @@ Nous procédons à la jointure finale en utilisant le trimestre comme clé d'ali
 
 # 1. Vérification et préparation des tables satellites
 data_assur <- data_assur %>%
-  # On renomme tout en minuscules pour être tranquille
   rename_with(tolower) %>% 
   # On s'assure que les colonnes clés existent bien
   mutate(
@@ -534,6 +534,102 @@ data_vie <- data_final %>%
   filter(nature == "Vie/Capitalisation")
 ```
 
+## Analyse de la stationnarité - Test Augmenté de Dickey-Fuller (ADF)
+
+L'hypothèse nulle de ce test est celle d'une racine unitaire, indiquant une série non-stationnaire. Si la série n'est pas stationnaire, il sera nécessaire de différencier la série jusqu'à ce qu'elle le deviennt.
+
+### Test ADF - Vie
+
+```{r,echo=FALSE}
+library(urca)
+library(tseries)
+
+# Test sur le Ratio en niveau (on s'attend à p-value > 0.05)
+adf.test(data_vie$ratio_moyen)
+
+# Test sur le Ratio en différence (on s'attend à p-value < 0.05)
+adf.test(diff(data_vie$ratio_moyen))
+```
+
+Pour la série des ratios de solvabilité en niveau, on ne peut pas rejeter l'hypothèse nulle de racine unitaire, la série n'est donc pas stationnaire. Notre série est donc intégrée à l'ordre 1.
+En revanche sa différence première est stationnaire au seuil de 5%. Notre série est donc intégrée d'ordre 1, ce qui justifie l'examen d'une éventuelle relation de cointégration via la procédure de Johansen.
+
+### Test ADF - Non-Vie
+```{r,echo=FALSE}
+library(urca)
+library(tseries)
+
+# Test sur le Ratio en niveau (on s'attend à p-value > 0.05)
+adf.test(data_non_vie$ratio_moyen)
+
+# Test sur le Ratio en différence (on s'attend à p-value < 0.05)
+adf.test(diff(data_non_vie$ratio_moyen))
+```
+
+### Tester la cointégration (Test de Johansen) - Vie
+
+Puisque le test ADF met en avant une racine unitaire, nous effectuons le test de Johansen afin d'étudier une possible relation de cointégration entre le ratio de solvabilité, l'EuroSTOXX et les taux d'intérêt de long terme.
+
+```{r johansen-testvie, echo=FALSE, warning=FALSE, message=FALSE}
+# 1. Préparation des données en niveau (Log-prix et Ratio)
+# On s'assure de récupérer close_trim depuis la table boursière
+df_johansen <- data_vie %>%
+  left_join(monthly_STOXX50E_trim %>% select(trimestre, close_trim), by = "trimestre") %>%
+  # On transforme en log pour la cointégration
+  mutate(
+    log_stoxx = log(as.numeric(close_trim)),
+    log_ratio = log(as.numeric(ratio_moyen))
+  ) %>%
+  select(log_ratio, log_stoxx, taux_long_trim) %>%
+  na.omit()
+
+# 2. Vérification de sécurité pour le Knit
+if (nrow(df_johansen) > 10) {
+  
+  # Exécution du test de Johansen (S4 object)
+  test_objet <- urca::ca.jo(df_johansen, 
+                            type = "trace", 
+                            ecdet = "const", 
+                            K = 2)
+  
+  # Affichage des résultats
+  summary(test_objet)
+  
+} else {
+  print("Erreur : Pas assez de données pour le test de Johansen. Vérifiez les jointures.")
+}
+```
+
+Nous ne pouvons pas rejeter l'hypothèse nulle d'absence de relation de cointégration, un modèle VECM n'est donc pas pertient pour notre analyse. De plus, cela renforce le choix d'un modèle de régression en différence comme réalisé précédemment. 
+
+De pus, cela nous indique que la solvabilité des assureurs vie n'est pas fortement dépendante aux taux d'intérêt de long terme sur le long terme. Les mécanismes de Solvabilité II semblent donc efficaces afin de protéger la solvabilité des assureurs. 
+
+Cela suggère également que l'impact des variables macro-financières est transitoire. 
+
+## Tester la cointégration - Non-Vie
+
+```{r johansen-testnonvie, echo=FALSE, warning=FALSE, message=FALSE}
+# Test pour les Non-Vie
+df_johansen_nv <- data_non_vie %>%
+  left_join(monthly_STOXX50E_trim %>% select(trimestre, close_trim), by = "trimestre") %>%
+  # On ajoute l'IPC s'il est dans data_non_vie
+   mutate(
+    log_stoxx = log(as.numeric(close_trim)),
+    log_ratio = log(as.numeric(ratio_moyen))
+  ) %>%
+  select(log_ratio, log_stoxx, taux_long_trim) %>%
+
+  na.omit()
+
+# Johansen
+test_nv <- urca::ca.jo(df_johansen_nv, type = "trace", ecdet = "const", K = 2)
+summary(test_nv)
+```
+
+Le constat est identique pour les assureurs Non-Vie.
+
+Compte tenu des résultats au test de Johansen, un modèle VECM n'est pas pertinent, une régression en différence est préférable.
+
 ## Régression en différences du ratio de solvabilité
 
 ### Spécification du modèle - Vie
@@ -551,7 +647,6 @@ $$
 library(modelsummary)
 
 model_ratio_vie <- lm(diff_ratio ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_vie)
-summary(model_ratio_vie)
 stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
 
 # Génération du tableau
@@ -565,15 +660,15 @@ modelsummary(
   gof_map = c("nobs", "r.squared", "adj.r.squared"),
   output = "kableExtra"
 ) %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
+  kable_styling(latex_options = c("striped", "HOLD_position"))
 ```
-Les coefficients estimés sont toujours non significatifs. La constante est elle aussi non significative, ce qui nous indique qu'il n'y a pas de drift dans notre série, le ratio est donc stable sans variation exterieure. 
+Les coefficients estimés sont non significatifs. La constante est elle aussi non significative, ce qui nous indique qu'il n'y a pas de drift dans notre série, le ratio est donc stable sans variation exterieure. 
 La faiblesse des résultats nous indique que l'évolution du ratio de solvabilité dépend également d'autres facteurs non inclus dans notre modèle. 
 Une hausse de 1% de l'indice Stoxx entraine une hausse de 0,25% du taux de croissance du ratio moyen. La hausse des fonds propres est donc plus forte que l'augmentation de l'exigence de capital (SCR marché). Cependant cet effet n'est pas statistiquement significatif.
 
 La solvabilité des assureurs semble très peu sensible aux chocs des marchés de court terme. Une hausse de l'inflation a un impact positif marqué sur l'évolution du ratio de solvabilité. Ce qui semble surprenant.
 
-Le coefficient associé à la variation des taux longs est désormais positif (0,0511), bien que non significatif au seuil de 5%. Cette relation positive est cohérente avec la structure du bilan des assureurs sous Solvabilité II : une hausse des taux d'intérêt entraîne une diminution de la valeur actuelle des engagements au passif (effet d'actualisation), ce qui tend à accroître les fonds propres et donc à améliorer le ratio de solvabilité. L'absence de significativité statistique suggère néanmoins que les stratégies de couverture et les mécanismes de lissage réglementaire (Volatility Adjustment) absorbent l'essentiel de la volatilité des taux sur la période étudiée.
+Le coefficient associé à la variation des taux longs est positif (0,0511), bien que non significatif au seuil de 5%. Cette relation positive est cohérente avec la structure du bilan des assureurs sous Solvabilité II : une hausse des taux d'intérêt entraîne une diminution de la valeur actuelle des engagements au passif (effet d'actualisation), ce qui tend à accroître les fonds propres et donc à améliorer le ratio de solvabilité. L'absence de significativité statistique suggère néanmoins que les stratégies de couverture et les mécanismes de lissage réglementaire (Volatility Adjustment) absorbent l'essentiel de la volatilité des taux sur la période étudiée.
 
 L'absence de corrélation forte entre les fluctuations macro-financières trimestrielles et l'évolution du ratio de solvabilité témoigne de l'efficacité des outils de gestion des risques et des mécanismes de lissage prudentiel prévus par la réglementation.
 
@@ -582,7 +677,6 @@ L'absence de corrélation forte entre les fluctuations macro-financières trimes
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 
 model_ratio_non_vie <- lm(diff_ratio ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_non_vie)
-summary(model_ratio_vie)
 stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
 
 # Génération du tableau
@@ -596,9 +690,16 @@ modelsummary(
   gof_map = c("nobs", "r.squared", "adj.r.squared"),
   output = "kableExtra"
 ) %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
+  kable_styling(latex_options = c("striped", "HOLD_position"))
 ```
-### Analyse des résidus du modèle en différence Vie
+
+Pour les assureurs Non-Vie, l'ensemble des coeeficients sont encore moins significatifs que pour les assureurs Vie. 
+Cependant, pour les assureurs, l'inflation a un effet négatif sur l'évolution de leur ratio de solvabilité. L'effet des taux d'intérêt est inverse à celui des assureurs Vie. La hausse des taux longs a un impact négatif sur le taux de croissance ratio de solvabilité.
+La hausse des taux courts, elle, a impact positif sur le taux de croissance des ratios des assureurs. 
+La hausse de l'indice stoxx impact négativement le taux de croissance du ratio des assureurs, suggérent que la hausse de SCR de marché est supérieur à la hausse des fonds propres. 
+Nous pouvons également noté que le R2 de cette régression est beaucoup plus faible que le précédent. 
+
+### Analyse des résidus du modèle en différence - Vie
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.width=6, fig.height=3, fig.align='center'}
 library(lmtest) # Pour le test de Durbin-Watson et Breusch-Pagan
@@ -668,16 +769,16 @@ diag_table <- data.frame(
 )
 
 kable(diag_table, booktabs = TRUE, caption = "Tests sur les résidus") %>%
-  kable_styling(latex_options = c("striped", "hold_position"), full_width = FALSE)
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = FALSE)
 ```
 
-Le test de Ljung Box rejette l'hypothèse nulle d'absence d'autocorrélation des résidus. Notre modèlé n'est donc pas valide statistiquement et ses résultats ne peuvent pas être intérpréter. De plus l'analyse de la fonction d'autocorrélation met en évidence une autocorrélation significative au premier ordre.  
+Le test de Ljung Box rejette l'hypothèse nulle d'absence d'autocorrélation des résidus. Notre modèle n'est donc pas valide statistiquement et ses résultats ne peuvent pas être intérpréter. De plus l'analyse de la fonction d'autocorrélation met en évidence une autocorrélation significative au premier ordre.  
 
 Cette autocorrélation indique une mauvaise spécification dynamique du modèle, suggérant que certaines dépendances temporelles n’étaient pas correctement prises en compte.
 
 Afin de corriger ce problème, nous allons introduire un terme autorégressif d’ordre 1, en incluant la variable dépendante retardée parmi les variables explicatives.
 
-### Ajout d'un retard à notre variable dépendante
+### Ajout d'un retard à notre variable dépendante - Vie
 
 $$
 \Delta Ratio\_moyen_t = \alpha 
@@ -719,6 +820,103 @@ acf(residuals(model_ratio_vie_dyn))
 
 Après l'introduction de ce terme retardé, le test d'autocorrélation des résidus ne rejette plus l'hypothèse d'absence d'autocorrélation, ce qui valide cette spécification du modèle.  
 
-Les coefficients deviennent plus significatifs qu'auparavant, mais ils restent tous non significatifs. Le R2 a augmenté pour atteindre un niveau convenable de 0,295.
+Les coefficients deviennent plus significatifs qu'auparavant, mais ils restent tous non significatifs. Le R2 a augmenté pour atteindre un niveau convenable de 0,295. Le signe des coefficients s'est inversé.
 
-Le coefficient associé à la variable dépendante retardée est négatif, ce qui traduit une dynamique de retour à la moyenne. Une hausse du ratio à la période précédente tend suggérant que les variations du ratio ne sont pas persistantes mais tendent à se corriger dans le temps.
+Le coefficient associé à la variable dépendante retardée est négatif, ce qui traduit une dynamique de retour à la moyenne. Cela suggère que les variations du ratio ne sont pas persistantes mais tendent à se corriger dans le temps.
+
+### Régression du SCR - Non-Vie
+
+$$
+\Delta SCR\_moyen_t = \alpha 
++ \beta_1 \, \ln(Stoxx_t) 
++ \beta_2 \Delta \ln(IPC_t) 
++ \beta_3 \Delta Taux\_C_t 
++ \beta_4 \Delta Taux\_L_t 
++ \varepsilon_t
+$$
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_non_vie <- lm(diff_scr ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_non_vie)
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+# Génération du tableau
+modelsummary(
+  model_scr_non_vie,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+Les résultats statistiques sont de nouveau peu concluants avec des coefficients non significatifs. 
+
+### Régression du SCR - Vie
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_vie <- lm(diff_scr ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_vie)
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+# Génération du tableau
+modelsummary(
+  model_scr_vie,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+Nous pouvons noter un effet différencier des taux d'intérêt de long terme sur le taux de croissance du SCR des assureurs Vie et non Vie. Une variation positive des taux d'intérêt de long terme a un impact positif sur la croissance du SCR des assureurs Vie et négatif pour les assureurs Non-Vie, ce qui est cohérent avec notre études des rapports de solvabilité des compagnies. 
+
+### Régression fonds propres - Non-Vie
+
+$$
+\Delta Fonds\_Propres\_moyens_t = \alpha 
++ \beta_1 \, \ln(Stoxx_t) 
++ \beta_2 \Delta \ln(IPC_t) 
++ \beta_3 \Delta Taux\_C_t 
++ \beta_4 \Delta Taux\_L_t 
++ \varepsilon_t
+$$
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_fp_non_vie <- lm(diff_fonds_propres ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_non_vie)
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+# Génération du tableau
+modelsummary(
+  model_fp_non_vie,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+### Régression fonds propres - Vie
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_fp_vie <- lm(diff_fonds_propres ~ rendement_stoxx + diff_ipc + diff_taux_court + diff_taux_long, data = data_vie)
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+# Génération du tableau
+modelsummary(
+  model_fp_vie,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], # On prend tout sauf l'estimate qui est déjà défini
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats complets de la régression Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+Nous pouvons noter un effet différencié de l'inflation sur le taux de croissance des fonds propres des assureurs Vie qui devient négatif.
