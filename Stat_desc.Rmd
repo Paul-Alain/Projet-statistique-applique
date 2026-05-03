@@ -14,6 +14,7 @@ knitr::opts_chunk$set(
 library(dplyr)
 library(tidyr)
 library(zoo)
+library(janitor)
 library(ggplot2)
 library(knitr)
 library(kableExtra)
@@ -26,6 +27,14 @@ library(quantmod)
 library(tidyquant)
 library(lubridate)
 library(readr)
+library(urca)
+library(tseries)
+library(lmtest)
+library(purrr)
+library(modelsummary)
+library(insee)
+library(car) 
+library(sandwich)
 ```
 
 ```{r, include=FALSE}
@@ -35,9 +44,39 @@ df_orig<-df
 
 # Introduction
 
-# Révue de la littérature
+Les assureurs jouent un rôle majeur dans le système financier en tant qu’investisseurs institutionnels et leur exposition aux différents risques est structurante pour leur solvabilité. Dans le cadre prudentiel Solvabilité II, la sensibilité des fonds propres aux variations des taux, des marchés actions et plus généralement de la conjoncture économique est fortement encadrée. Cette revue de littérature vise à synthétiser les principaux résultats existants.
+
+#### 1. Impact des taux d’intérêt et du marché obligataire sur la solvabilité des assureurs
+
+La longue durée des engagements d’assurance rend ces entreprises particulièrement sensibles à la structure par terme des taux. Les stress tests réalisés par l’EIOPA mettent en évidence une forte sensibilité des entreprises européennes d’assurance aux chocs de marché, révélant l’exposition directe du SCR aux variations de taux. L’environnement prolongé de taux bas a exercé une pression sur la solvabilité et la rentabilité des assureurs notamment à travers leurs fonds propres. La réévaluation des primes de risques suite à la remontée des taux peut ainsi entraîner des pertes importantes dans les portefeuilles obligataires, affectant le ratio de solvabilité (EIOPA, 2018) [1].
+Dans le cadre de Solvabilité II, la courbe des taux sans risque utilisée pour actualiser les flux futurs constitue un élément central dans le calcul des provisions Best Estimates. Un abaissement durable de cette courbe entraîne une hausse des provisions, particulièrement pour les passifs de longue duration, ce qui réduit mécaniquement les fonds propres disponibles (Aalala, 2021) [7].
+Par ailleurs, Berdin et Gründl (2015) [2] montrent qu’un environnement de faibles taux peut conduire les assureurs à accroître leur exposition à des actifs plus risqués afin de compenser la faiblesse des rendements. Cette réallocation accroît la sensibilité du bilan aux variations de taux d’intérêt. Ces travaux confirment que la gestion actif-passif et la duration des portefeuilles constituent des éléments centraux dans la maîtrise du risque de solvabilité.
+Enfin, Poufinas et Siopi (2024) [3] mettent en évidence une relation inverse entre le développement du marché obligataire et le ratio de solvabilité. Un
+marché obligataire plus développé se caractérise par une meilleure liquidité et une meilleure stabilité, conduisant à une hausse de la demande en obligations et accroit leur prix. Cette appréciation de la valeur des obligations peut accroître l’exposition au risque de crédit et de spread, augmentant ainsi le capital réglementaire requis.
+
+#### 2. Impact du marché actions, de la volatilité et des corrélations de marché
+
+L’exposition des compagnies d’assurance au marché actions s’est accrue dans un contexte de hausse des taux et d’inflation élevée. Face à cette remontée des taux, l’EIOPA observe une réallocation partielle des portefeuilles vers des actifs plus risqués, notamment les actions, afin de préserver le rendement, au prix d’un besoin accru en capital réglementaire.
+Les travaux de Baranoff et Sager (2002) [11] montrent qu’une exposition accrue aux risques financiers, notamment actions, crédit et taux, s’accompagne d’un niveau de capital requis plus élevé afin d’absorber la volatilité des marchés. Les fluctuations de la valeur de marché affectent directement les fonds propres et introduisent une volatilité significative dans le ratio de solvabilité (Rapport ACM 2023) [6].
+Dans cette logique, les travaux de Pénasse et Dezorme (2021) [5] mettent en évidence un arbitrage entre le rendement espéré des actions et le surplus de SCR imposé par Solvabilité II.
+
+#### 3. Rôle des variables macroéconomiques : inflation et cycle économique
+
+Au-delà des variables financières, la littérature souligne que la conjoncture macroéconomique, notamment l’inflation et la croissance, exerce un effet significatif sur la solvabilité des assureurs via la profitabilité, le niveau des sinistres et la dynamique des primes.
+Les travaux récents de l’EIOPA montrent que l’inflation exerce une pression négative sur la valeur réelle et le rendement des actifs non indexés ainsi que sur la rentabilité des assureurs. Pour les assureurs non-vie, elle augmente également le coût des sinistres et des charges d’exploitation. Pour les assureurs vie, une inflation inattendue peut rendre les provisions techniques insuffisantes et dégrader la rentabilité technique, ce qui exerce une pression négative sur la solvabilité (EIOPA, 2023) [9].
+L’étude de Gonji et al. (2020) [10] met également en évidence un impact du taux d’inflation et du PIB sur la croissance et la rentabilité des compagnies d’assurance. Une croissance économique soutenue favorise généralement la demande d’assurance et la capacité des assureurs à générer des fonds propres, tandis qu’un ralentissement économique peut dégrader la qualité des actifs et peser sur le ratio de solvabilité.
+
+Dans l'ensemble, la littérature met en évidence le rôle central des variables macro-financières dans la dynamique de solvabilité, avec des effets différenciés selon les branches. Les assureurs Vie apparaissent généralement plus sensibles aux taux et aux marchés financiers en raison de la longue duration de leurs engagements, tandis que la branche Non-Vie semble davantage influencée par l'inflation et le cycle d'exploitation.
+Notre travail s'inscrit dans cette lignée tout en s'en distinguant sur plusieurs points. D'une part, nous mobilisons des données Solvabilité II françaises sur la période 2016-2025 ce qui permet de travailler dans un cadre réglementaire homogène peu exploité empiriquement. D'autre part, nous combinons trois approches complémentaires — modèle en différences, ARDL et données de panel — afin de capter simultanément les dynamiques de court terme, les relations d'équilibre de long terme et l'hétérogénéité individuelle des assureurs. Enfin, la distinction systématique entre branches Vie et Non-Vie constitue un apport empirique par rapport aux études qui traitent le secteur de façon agrégée.
 
 # Chronologie des évènements
+
+Nous avons réalisé une chronologie des évènements macroéconomiques et macro-financiers entre 2016 et 2025 (période de nos données) ayant impacté la solvabilité et l'activité des assureurs. Cela afin de déceler les variables pertinentes pour notre analyse et afin de déceler des premiers mécanismes dans l'évolution et la sensibilité du ratio de solvabilité aux
+variables macro-financières.
+Nous avons relevé trois grandes phases économiques sur cette période. De 2016 à 2020, les assureurs étaient placés dans un environnement de taux d'intérêt très bas qui a exercé une pression négative sur leur ratio de solvabilité. En effet, les revenus obligataires étaient faibles, ce qui a dégradé leur portefeuille d'investissement et il a été plus difficile pour les assureurs vie d'honorer leurs engagements. Suite à cela, l'économie a subi un retournement et un choc inflationniste pendant les années 2021 et 2022 dû à la reprise économique post-COVID-19 et la crise énergétique. Les taux d'intérêt directeurs de la BCE ont rapidement augmenté et l'inflation a explosé. Pour les assureurs, la hausse brutale des taux a entraîné des pertes latentes sur leur portefeuille obligataire, entraînant une baisse des fonds propres et donc une dégradation du ratio de solvabilité. Enfin, durant les dernières années 2023 à 2025, l'économie traverse une période d'instabilité financière et géopolitique. Les marchés financiers sont affectés par plusieurs sources de volatilité, notamment une crise bancaire et des tensions géopolitiques toujours dans un contexte inflationniste et de taux d'intérêt élevés. Les portefeuilles des compagnies d'assurance ont perdu en valeur et le SCR de marché a augmenté, détériorant les deux composants du ratio de solvabilité. 
+
+Cette chronologie nous a permis de noter les variables macro-économiques qui semblent en grande partie impacter la solvabilité et l'activité des assureurs. Ainsi, il a été observé que es taux d'intérêt ont un impact sur la valeur des obligations détenues par les assureurs entrainant des pertes ou plus-values latentes réduisant la valeur de marché de leurs fonds propres. En outre, la rentabilité des portefeuilles obligataires des assureurs est affectée. Dans ce contexte, les assureurs doivent ajuster la duration de leur portefeuille afin de gérer leur exposition au risque de taux. Ces éléments impactent donc le ratio de solvabilité des assureurs. L'inflation impacte elle aussi significativement l'activité des assureurs, à travers une hausse du coût des sinistres pour les assureurs non-vie qui amène les assureurs à ajuster leur tarification et réévaluer leurs provisions à la hausse. L'inflation conduit alors une baisse de leur résultat technique et leur solvabilité est dégradée. Enfin, la volatilité des marchés financiers entraîne une baisse potentielle de la valeur des portefeuilles actions des assureurs et une augmentation du SCR de marché pour couvrir cette incertitude. Cette combinaison réduit les fonds propres et peut dégrader le ratio de solvabilité.
+
 
 # Formule du calcul du SCR
 
@@ -585,11 +624,750 @@ facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
 ```
 Après ajustement, on observe que les données trimestrielles s’alignent désormais mieux avec les données annuelles, ce qui confirme la correction du biais initialement identifié.
 
-# Econométrie
+# Modélisation
+
+La complexité des interactions entre les variables macro-financières et la solvabilité des assureurs nécessite une approche empirique séquentielle. Notre stratégie de modélisation s'articule autour de trois axes complémentaires :
+\begin{enumerate}
+  \item \textbf{}Modèle en données de panel : Cette première modélisation vise à analyser la dynamique globale des indicateurs de solvabilité tout en tenant compte de l'hétérogénéité individuelle des assureurs.
+  \item \textbf{}Régressions en différence simple : Nous effectuons une régression MCO des différences logarithmiques en ne retenant que la dimension temporelle afin d'évaluer la dynamique de court terme.
+  \item \textbf{}Modèle ARDL (Auto Regressive Distributed Lag) : Il permet d'intégrer simultanément des relations de court terme et d'éventuelles relations de long terme (cointégration) qui ne peuvent pas être captées par les modèles de régression simple.
+\end{enumerate}
+
+## I - Modèle de données de panel
+
+## II - Régressions en différence
+
+```{r, include=FALSE}
+# Indicateur de solvabilité
+df_ajt <- read_csv("trim_ajustées.csv")
+df_ajt$Nature_Group<- dplyr::recode(df_ajt$Nature_Group,
+                             "Vie"="vie/mixte")
+```
+
+```{r, echo=FALSE}
+# Données assureurs
+assur <- readRDS("BASE_SCR_ENSAE_ANONYME.rds")
+```
+
+```{r}
+# Indices financiers
+monthly_STOXX50E <- tq_get("^STOXX50E",
+                           from = "2000-01-01",
+                           to = "2025-01-01",
+                           periodicity = "monthly")
+
+# On utilise 'lubridate::year' pour être sûr que R trouve la fonction
+monthly_STOXX50E <- monthly_STOXX50E %>%
+  dplyr::filter(lubridate::year(date) > 2014)
+
+monthly_SP500 <- tq_get("^GSPC",
+                        from = "2000-01-01",
+                        to = "2025-01-01",
+                        periodicity = "monthly")
+
+monthly_SP500 <- monthly_SP500 %>% 
+  filter(year(date) > 2014)
+
+CA_40_month <- tq_get("^FCHI",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")%>%filter(year(date)>2014)
+
+monthly_DAX <- tq_get("^GDAXI",
+                      from = "2015-01-01",
+                      to   = "2025-01-01",
+                      periodicity = "monthly") %>%
+  filter(year(date) >= 2015)
+```
+
+```{r}
+# Les indices macroéconomiques
+# PIB
+# Récupération de l'historique via l'id INSEE
+
+pib_hist <- get_insee_idbank("010565700") %>%
+  mutate(date_raw = as.Date(DATE)) %>%
+  filter(date_raw >= as.Date("2014-01-01")) %>%
+  arrange(date_raw) %>%
+  mutate(
+    annee = as.numeric(format(date_raw, "%Y")),
+    remise = case_when(
+      format(date_raw, "%m") == "01" ~ "T1",
+      format(date_raw, "%m") == "04" ~ "T2",
+      format(date_raw, "%m") == "07" ~ "T3",
+      format(date_raw, "%m") == "10" ~ "T4",
+      TRUE ~ NA_character_
+    ),
+    pib = as.numeric(OBS_VALUE)
+  ) %>%
+  filter(!is.na(remise)) %>%
+  select(annee, remise, pib)
+
+#  Complément à partir du fichier XLS INSEE
+pib_complement <- tibble(
+  annee = c(2024, 2024, 2024, 2025),
+  remise = c("T2", "T3", "T4", "T1"),
+  pib = c(652.57, 654.96, 654.96, 655.58) * 1000
+)
+
+# Fusion historique + complément
+
+pib_brut <- bind_rows(pib_hist, pib_complement) %>%
+  distinct(annee, remise, .keep_all = TRUE) %>%
+  mutate(
+    remise = factor(remise, levels = c("T1", "T2", "T3", "T4"), ordered = TRUE)
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(remise = as.character(remise))
+
+# IPC
+ipc <- read_delim("ipc.csv", delim = ";", 
+    escape_double = FALSE, trim_ws = TRUE)
+
+ipc<- ipc[6:dim(ipc)[1],c(1,2)]%>%rename( "ipc"=names(ipc)[2], "annee"=names(ipc)[1])%>%mutate(ipc=as.numeric(ipc))
+```
+
+```{r,include=FALSE}
+# Imputation données manquantes
+df_quarterly <- assur %>%
+  filter(Remise %in% c("T1", "T2", "T3", "T4"))
+
+df_annual <- assur %>%
+  filter(Remise == "Annuel")
+
+stats_annuelles <- df_annual %>%
+  select(Annee, SOCIETE, Val_Annuelle = SCR)
+
+taux_individuels <- df_quarterly %>%
+  inner_join(stats_annuelles, by = c("Annee", "SOCIETE")) %>%
+  mutate(
+    Val_Trim = SCR,
+    Taux_Evol_Ent = Val_Annuelle / Val_Trim - 1
+  )
+
+ratios_croissance <- taux_individuels %>%
+  group_by(Annee, Remise) %>%
+  summarise(
+    Moyenne_Taux_Evolution = mean(Taux_Evol_Ent, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+df_quarterly_filled <- df_quarterly %>%
+  left_join(ratios_croissance, by = c("Annee", "Remise")) %>%
+  left_join(stats_annuelles, by = c("Annee", "SOCIETE")) %>%
+  mutate(
+    SCR = ifelse(
+      is.na(SCR),
+      Val_Annuelle / (1 + Moyenne_Taux_Evolution),
+      SCR
+    )
+  )
+```
+
+Les régressions en différence constituent étape d’analyse des liens de court terme entre les variables macro-financières et les indicateurs de solvabilité. Cette approche permet d’étudier la transmission immédiate des chocs macro-financiers tout en intégrant une dynamique autorégressive et d'éventuels effets retardés.
+Nous utilisons des modèles de régression linéaire estimés par les Moindres Carrés Ordinaires. La spécification générale du modèle est la suivante : 
+
+\begin{equation}
+\Delta Y_t = \alpha + \sum_{i=1}^{n} \beta_i \Delta X_{i, t-k} + \rho \Delta Y_{t-1} + \epsilon_t
+\end{equation}
+
+Où :
+\begin{itemize}
+    \item $\Delta Y_t$ représente le taux de croissance de l'indicateur de solvabilité étudié (Ratio, Fonds Propres ou SCR) au temps $t$.
+    \item $\alpha$ est la constante du modèle (ou drift).
+    \item $\Delta X_{i, t-k}$ représente la variation de la $i$-ème variable explicative (Indices boursiers, IPC, Taux, PIB) avec un retard $k \geq 0$.
+    \item $\rho$ est le coefficient associé au terme autorégressif, captant l'inertie de la variable expliquée.
+    \item $\epsilon_t$ est le terme d'erreur (bruit blanc) $\epsilon_t \sim N(0, \sigma^2)$.
+\end{itemize}
+
+### 1) Agrégation et transformation des données
+
+Dans le cadre de cette modélisation, les données individuelles des assureurs et les variables macro-financières ont été agrégées par trimestre afin de ne conserver qu’une dimension temporelle. Cette agrégation permet d’obtenir une série synthétique reflétant l’évolution globale du secteur et de s'aligner sur les dates de reporting réglementaires du secteur. Ce choix méthodologique implique dans un premier temps de renoncer à l’analyse des effets individuels mais il est cohérent avec l’objectif de l’étude, centré sur la dynamique macroéconomique de la solvabilité.
+
+Nous modéliserons les fonds propres, le SCR et le ratio de solvabilité des assureurs. Nous avons retenu les variables explicatives suivantes (valeurs trimestrielles) : les indices boursiers S&P 500 et Euro Stoxx 50, les taux d'intérêt de court et long terme, l'indice des prix à la consommation en France (IPC) et le Produit Intérieur Brut français. 
+
+Pour chaque indice boursier (S&P 500, EURO STOXX 50, DAX, CAC 40), nous effectuons deux transformations majeures pour assurer la pertinence de l'analyse :
+\begin{itemize}
+  \item \textbf{Agrégation trimestrielle} : Afin de faire correspondre les données boursières aux dates de remise des rapports de solvabilité, nous retenons la dernière valeur de clôture enregistrée pour chaque trimestre.
+  \item \textbf{Calcul des rendements logarithmiques} : Nous utilisons la formule $r_t = \ln(P_t) - \ln(P_{t-1})$. Les log-rendements sont préférés car ils permettent de traiter des séries temporelles stationnaires et facilitent la comparaison entre indices de niveaux de prix différents.
+\end{itemize}
+
+### 2) Spécification des variables et stationnarité
+
+Nous avons également enrichi nos données en calculant les différences logarithmiques des variables qui seront utilisées dans la régression en différence. Cette transformation permet de rendre les séries stationnaires et d’interpréter les variations comme des taux de croissance. Les taux d’intérêt sont quant à eux exprimés en différences premières, correspondant à des variations en niveau.
+
+L'ensemble des variables sont transformées en différences logarithmiques selon $\Delta\ln(X_t) = \ln(X_t) - \ln(X_{t-1})$, à l'exception des taux d'intérêt exprimés en différences premières $\Delta X_t = X_t - X_{t-1}$, ces derniers pouvant prendre des valeurs négatives incompatibles avec le logarithme.
+
+```{r,echo=FALSE}
+# Donnes assureurs
+data_assur <- df_quarterly_filled %>%
+  group_by(Annee, Remise, Nature) %>%
+  summarise(
+    ratio_moyen = mean(RATIO, na.rm = TRUE),
+    fonds_propres_moyens = mean(`FONDS PROPRES`, na.rm = TRUE),
+    scr_moyen = mean(SCR, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    trimestre = paste0(Annee, "-", Remise),
+    Annee = as.numeric(Annee) 
+  ) %>%
+  clean_names()
+```
+
+```{r,echo=FALSE}
+# SP500
+SP500_trim <- monthly_SP500 %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_sp500 = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+```
+
+```{r,echo=FALSE}
+# STOXX
+monthly_STOXX50E_trim <- monthly_STOXX50E %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_stoxx = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+```
+
+```{r,echo=FALSE}
+# DAX
+monthly_DAX_trim <- monthly_DAX %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_dax = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+```
+
+```{r,echo=FALSE}
+# CAC40
+CA_40_month <- CA_40_month %>%
+  mutate(
+    date = as.Date(date),
+    annee = lubridate::year(date),
+    trimestre = paste0(annee, "-T", lubridate::quarter(date))
+  ) %>%
+  group_by(trimestre) %>%
+  summarise(
+    close = last(close),
+    .groups = "drop"
+  ) %>%
+  arrange(trimestre) %>%
+  mutate(
+    rendement_CAC40 = c(NA, diff(log(close)))
+  )
+
+```
+
+```{r,echo=FALSE}
+# IPC
+ipc_trim <- ipc %>%
+  mutate(date_temp = ym(annee)) %>%
+  mutate(
+    annee_num = year(date_temp),
+    trimestre_num = quarter(date_temp)
+  ) %>%
+  group_by(annee_num, trimestre_num) %>%
+  summarise(ipc_moy = mean(ipc, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    remise = paste0("T", trimestre_num),
+    trimestre = paste0(annee_num, "-T", trimestre_num) 
+  ) %>%
+  filter(annee_num >= 2016 & annee_num <= 2025) %>%
+  select(annee = annee_num, remise, trimestre, ipc_moy)
+
+```
+
+```{r,echo=FALSE}
+# PIB
+# Création de la table avec calcul du taux de croissance
+pib_trim <- pib_brut %>%
+  arrange(annee, remise) %>% # Sécurité pour le calcul du lag
+  mutate(
+    # Calcul du taux de croissance trimestriel (log-différence)
+    diff_pib = log(pib) - log(dplyr::lag(pib, 1))
+  ) %>%
+  select(annee, remise, pib, diff_pib)
+```
+
+```{r,echo=FALSE}
+# Taux
+taux_data_raw <- readRDS("mes_taux_fred.rds")
+
+taux_trimestriel <- taux_data_raw %>%
+  rename(price = 3) %>% 
+  filter(!is.na(price)) %>%
+  pivot_wider(names_from = symbol, values_from = price) %>%
+  rename(taux_long = DGS10, taux_court = FEDFUNDS) %>%
+  mutate(
+    annee = year(date),
+    remise = paste0("T", quarter(date))
+  ) %>%
+  group_by(annee, remise) %>%
+  summarise(
+    taux_long_trim = mean(taux_long, na.rm = TRUE),
+    taux_court_trim = mean(taux_court, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(trimestre = paste0(annee, "-", remise))
+
+taux <- janitor::clean_names(taux_trimestriel)
+
+taux_clean <- taux_trimestriel %>%
+  rename(
+    taux_long = taux_long_trim,
+    taux_court = taux_court_trim
+  ) %>%
+  select(annee, remise, trimestre, taux_long, taux_court) %>%
+  arrange(annee, remise)
+```
+
+```{r,echo=FALSE}
+# Fusion des tables
+data_assur <- data_assur %>%
+  rename_with(tolower) %>% 
+  mutate(
+    annee = as.numeric(annee),
+    trimestre = paste0(annee, "-", remise)
+  )
+
+pib_trim_clean <- pib_trim %>% 
+  mutate(
+    annee = as.numeric(as.character(annee)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  select(trimestre, pib, diff_pib)
+
+taux_clean_num <- taux_trimestriel %>% 
+  mutate(annee = as.numeric(as.character(annee)))
+
+ipc_trim_clean <- ipc_trim %>% 
+  mutate(annee = as.numeric(as.character(annee))) %>%
+  select(annee, remise, trimestre, ipc_moy)
+
+# 2. Construction de la table finale
+data_final <- data_assur %>%
+  clean_names() %>%
+  mutate(annee = as.numeric(as.character(annee))) %>%
+  
+  # Jointures sur le trimestre
+  left_join(monthly_STOXX50E_trim %>% select(trimestre, rendement_stoxx), by = "trimestre") %>%
+  left_join(CA_40_month %>% select(trimestre, rendement_CAC40), by = "trimestre") %>%
+  left_join(monthly_DAX_trim %>% select(trimestre, rendement_dax), by = "trimestre") %>%
+  left_join(SP500_trim %>% select(trimestre, rendement_sp500), by = "trimestre") %>%
+  left_join(taux_clean_num %>% select(trimestre, taux_long_trim, taux_court_trim), by = "trimestre") %>%
+  left_join(pib_trim_clean %>% select(trimestre, pib, diff_pib), by = "trimestre") %>%
+  left_join(ipc_trim_clean, by = c("annee", "remise", "trimestre")) %>%
+  
+  arrange(annee, remise)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Ajout des variables en log différence
+data_final <- data_final %>%
+  arrange(nature, annee, remise) %>%
+  # Groupe par secteur pour ne pas mélanger Vie et Non-Vie
+  group_by(nature) %>%
+  # Calculs des variations (Log-diff pour les milliards, Diff simple pour les taux)
+  mutate(
+    # LOG-DIFF (Taux de croissance en %) 
+    diff_ratio         = log(as.numeric(ratio_moyen)) - log(lag(as.numeric(ratio_moyen))),
+    diff_fonds_propres = log(fonds_propres_moyens) - log(lag(fonds_propres_moyens)),
+    diff_scr           = log(scr_moyen) - log(lag(scr_moyen)),
+    diff_ipc           = log(ipc_moy) - log(lag(ipc_moy)),
+    
+    # DIFF SIMPLE (Variation en points) 
+    diff_taux_court    = taux_court_trim - lag(taux_court_trim),
+    diff_taux_long     = taux_long_trim - lag(taux_long_trim)
+  ) %>%
+  ungroup() %>%
+  filter(!is.na(diff_ratio))
+```
+
+```{r,echo=FALSE}
+#Création une table Non-Vie
+data_non_vie <- data_final %>%
+  filter(nature == "Non Vie")
+
+#Création une table Vie
+data_vie <- data_final %>%
+  filter(nature == "Vie/Capitalisation")
+```
+
+Afin de pouvoir mener des régressions robustes, il est nécessaire que l'ensemble de nos séries utilisées soient stationnaires. La stationnarité des séries transformées a été vérifiée à l’aide des tests de Dickey-Fuller augmenté (ADF) et KPSS.
+Le test ADF repose ici sur l’observation de la p-value associée au test :
+\begin{itemize}
+    \item $H_0$ : La série possède une racine unitaire (non-stationnaire)
+    \item $H_1$  : La série est stationnaire
+\end{itemize}
+Si $t_{stat}$ < $t_{crit}$ : On rejette *H0* au seuil de significativité choisi.
+
+Les hypothèses du test KPSS sont les suivantes : 
+\begin{itemize}
+  \item $H_0$ : La série est stationnaire
+  \item $H_1$ : La série est non stationnaire
+\end{itemize}
+Si $t_{stat}$ > $t_{crit}$ : On rejette *H0* au seuil de significativité choisi.
+
+Ainsi, les tests ADF et KPSS appliqués aux séries transformées confirment leur stationnarité validant les conditions d’application des modèles économétriques.
+
+### 3) Test de Causalité de Granger
+
+Des tests de causalité au sens de Granger ont été réalisés afin d’identifier les retards pertinents des variables macro-financières dans les modèles dynamiques. Les tests ont été conduits sur des horizons allant de un à quatre trimestres afin de capturer d’éventuels délais de transmission. L’hypothèse nulle du test est la suivante :
+
+*H0* : les coefficients associés aux valeurs retardées de la variable explicative sont conjointement nuls.
+
+Pour les assureurs Vie, les résultats mettent en évidence un pouvoir prédictif significatif des taux longs (retard 1), de l’IPC (retard 4) et du S&P500 (retards 2) sur les fonds propres. L’IPC (retard 4) a un effet prédictif significatif sur le SCR et le S&P500 (retard 3) sur le ratio.  Pour les assureurs Non-Vie, seules quelques relations prédictives limitées apparaissent, principalement entre l’IPC (retard 3) et les fonds propres ainsi qu’entre les taux longs (retard 1) et le ratio de solvabilité.
+
+```{r granger-multi-lags, echo=FALSE, warning=FALSE, message=FALSE}
+# Granger Vie
+targets <- c("diff_fonds_propres", "diff_scr", "diff_ratio")
+predictors <- c("rendement_stoxx", "rendement_sp500","diff_ipc", "diff_taux_court", "diff_taux_long", "diff_pib", "rendement_CAC40")
+max_lags <- 4
+
+granger_multi <- map_df(targets, function(t) {
+  map_df(predictors, function(p) {
+    map_df(1:max_lags, function(l) {
+      test <- grangertest(as.formula(paste(t, "~", p)), order = l, data = data_vie)
+      
+      data.frame(
+        Cible = t,
+        Variable_Explicative = p,
+        Retard_Lag = l,
+        F_stat = round(test$F[2], 4),
+        P_value = round(test$`Pr(>F)`[2], 4)
+      )
+    })
+  })
+})
+```
+
+```{r granger-non-vie, echo=FALSE, warning=FALSE, message=FALSE}
+# Granger Non-Vie
+targets_nv <- c("diff_fonds_propres", "diff_scr", "diff_ratio")
+predictors_nv <- c("rendement_stoxx", "rendement_sp500","diff_ipc", "diff_taux_court", "diff_taux_long", "diff_pib", "rendement_CAC40")
+max_lags <- 4
+
+granger_nv_multi <- map_df(targets_nv, function(t) {
+  map_df(predictors_nv, function(p) {
+    map_df(1:max_lags, function(l) {
+      test <- grangertest(as.formula(paste(t, "~", p)), order = l, data = data_non_vie)
+      
+      data.frame(
+        Cible = t,
+        Variable_Explicative = p,
+        Retard_Lag = l,
+        F_stat = round(test$F[2], 4),
+        P_value = round(test$`Pr(>F)`[2], 4)
+      )
+    })
+  })
+})
+```
+
+### 4) Estimation du modèle
+
+Afin d’éviter les problèmes de multicolinéarité entre indices boursiers fortement corrélés, nous avons retenu uniquement le S&P 500 et l’Euro Stoxx. Ce choix permet de conserver une représentation pertinente des dynamiques des marchés, en combinant un indice global et un indice européen, cohérent avec l’exposition des assureurs étudiés.
+
+#### 4.1) Spécifications
+
+Des spécifications contemporaines ont d'abord été estimées par MCO (cf. Annexe Table). Malgré des diagnostics résiduels satisfaisants, les coefficients apparaissaient majoritairement non significatifs, suggérant l'existence de mécanismes de transmission retardés. Les modèles dynamiques finaux ont donc été construits en deux étapes : les tests de causalité de Granger ont d'abord permis d'identifier les retards pertinents puis les spécifications ont été comparées via les critères AIC et BIC afin d'assurer un équilibre entre robustesse statistique et interprétation économique.
+
+Les résultats mettent en évidence des mécanismes de transmission différenciés entre branches Vie et Non-Vie ce qui est cohérent avec leurs structures d'activité respectives.
+
+Les écarts-types des coefficients sont corrigés à l’aide de l’estimateur robuste de Newey-West afin de tenir compte d’une éventuelle hétéroscédasticité et autocorrélation des résidus. Bien que les tests de Breusch-Pagan et Ljung-Box ne rejettent pas formellement l'homoscédasticité et l'absence d'autocorrélation, la sensibilité des p-values à cette correction suggère la présence de déviations non détectées par ces tests sur petit échantillon, justifiant une approche robuste par précaution.
+
+##### 4.2.1) Assureurs Vie
+##### Fonds propres - Vie
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{FP}_t) = \alpha & + \rho \Delta \ln(\text{FP}_{t-1})
+& + \beta_1 \Delta \text{TauxL}_{t-1}
+& + \beta_2 \Delta \ln(\text{IPC})_{t-4}
+& + \beta_3 \Delta \ln(\text{S\&P500})_{t-2} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_fp_vie_dynamique2 <- lm(
+  diff_fonds_propres ~ 
+    dplyr::lag(diff_fonds_propres, 1) +  
+    dplyr::lag(diff_taux_long, 1) +  
+    dplyr::lag(rendement_sp500, 2)+
+    dplyr::lag(diff_ipc, 4),
+  data = data_vie
+)
+modelsummary(
+  list("Fonds Propres (Vie)" = model_fp_vie_dynamique2),
+  estimate = "{estimate}{stars}",
+  statistic = c("statistic", "p.value"), 
+  shape = term ~ statistic,
+  vcov = NeweyWest(model_fp_vie_dynamique2),
+  fmt = 4,
+  title = "Analyse dynamique des Fonds Propres - Branche Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+L'ensemble des coefficients sont significatifs au seuil de 5% après correction des écarts-types par la méthode de Newey-West. Les résidus ne présentent pas d'autocorrélation selon le test de Ljung-Box, le modèle semble donc robuste.
+Ainsi, l'inflation à l'année N-1 ralentit la croissance des fonds propres des assureurs, probablement suite à l'augmentation des coûts de gestion et aux délais d'ajustement des primes.
+Les résultats mettent en évidence une forte sensibilité des fonds propres des assureurs Vie aux conditions macro-financières. La hausse des taux d’intérêt de long terme exerce un effet négatif sur la croissance des fonds propres traduisant probablement la baisse de la valeur de marché des portefeuilles obligataires lors des phases de remontée des taux. À l’inverse, les performances des marchés actions internationaux, approximées par le S&P 500, soutiennent positivement l’évolution des fonds propres avec un décalage de deux trimestres, confirmant l’exposition importante des assureurs Vie aux marchés financiers.
+L’inflation apparaît également comme un facteur défavorable à la solvabilité avec un effet retardé de quatre trimestres. Ce résultat peut refléter l’augmentation progressive des coûts de gestion et le délai d'ajustement des primes. Enfin, la significativité du terme autorégressif souligne l’existence d’une dynamique de persistance des fonds propres, les chocs observés tendent à se diffuser progressivement dans le temps.
+
+##### SCR - Vie
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{SCR}_t) = \alpha & + \rho \Delta \ln(\text{SCR}_{t-1}) 
+& + \beta_1 \Delta \text{TauxL}_{t-1} 
+& + \beta_2 \Delta \ln(\text{IPC})_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_vie_dynamique2 <- lm(
+  diff_scr ~ 
+    dplyr::lag(diff_scr, 1) +  
+    dplyr::lag(diff_taux_long, 1) +   
+    dplyr::lag(diff_ipc, 3),
+  data = data_vie
+)
+
+modelsummary(
+  list("SCR (Vie)" = model_scr_vie_dynamique2),
+  estimate = "{estimate}{stars}",
+  statistic = c("statistic", "p.value"), 
+  shape = term ~ statistic,
+  vcov = NeweyWest(model_scr_vie_dynamique2),
+  fmt = 4,
+  title = "Analyse dynamique du SCR - Branche Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+Les résultats montrent que le SCR des assureurs Vie présente une dynamique de rappel importante comme l’indique la significativité du terme autorégressif. Les ajustements du besoin en capitals sont donc progressifs et les chocs observés sur le SCR tendant à se résorber partiellement au trimestre suivant. Les taux d’intérêt de long terme et l’inflation exercent tous deux un effet négatif sur la croissance du SCR. Ces résultats apparaissent cohérents dans la mesure où ces deux variables influencent les mécanismes d’actualisation des engagements des assureurs. Dans un contexte de hausse des taux, souvent associé à des tensions inflationnistes, la valeur actuelle des passifs futurs diminue, ce qui contribue à alléger les exigences réglementaires en capital. L’effet retardé de l’IPC suggère toutefois que cette transmission s’opère progressivement dans le bilan des assureurs Vie. Par ailleurs, la constante positive et significative indique l’existence d’une croissance résiduelle du SCR non entièrement expliquée par les variables macro-financières intégrées au modèle.
+
+##### Ratio de solvabilité - Vie
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{Ratio\_moyen}_t) = \alpha & + \rho \Delta \ln(\text{Ratio\_moyen}_{t-1})
+& + \beta_1 \Delta \ln(\text{S\&P500})_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_ratio_vie_dynamique2 <- lm(
+  diff_ratio ~ 
+    dplyr::lag(diff_ratio, 1) +  
+    dplyr::lag(rendement_sp500, 3),
+  data = data_vie
+)
+
+modelsummary(
+  list("Ratio (Vie)" = model_ratio_vie_dynamique2),
+  estimate = "{estimate}{stars}",
+  statistic = c("statistic", "p.value"), 
+  shape = term ~ statistic,
+  vcov = NeweyWest(model_ratio_vie_dynamique2),
+  fmt = 4,
+  title = "Analyse dynamique du ratio de solvabilité - Branche Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+La dynamique du ratio de solvabilité semble principalement expliquée par son propre terme retardé dont le coefficient négatif traduit un mécanisme de retour à la moyenne dans l’ajustement de la solvabilité des assureurs Vie. Le rendement du S&P500 exerce un effet positif modéré sur le ratio de solvabilité avec un retard de trois trimestres, suggérant qu’un environnement boursier favorable améliore progressivement la solvabilité des assureurs Vie à travers la valorisation des actifs financiers et de meilleures conditions de rendement des placements. L’absence d’effet significatif sur le SCR suggère que cette amélioration des fonds propres ne semble pas être entièrement compensée par une hausse des exigences en capital.
+À l’inverse, les variables de taux d'intérêt et d’inflation n'apparaissent plus comme des déterminants robustes des variations du ratio de solvabilité probablement en raison d’effets compensatoires entre fonds propres et SCR.
+Par ailleurs, la constante n’apparaît plus significative, il ne semble pas y avoir de croissance structurelle du ratio non expliquée par les variables macro-financières et la dynamique de rappel.
+
+
+#### 4.2.2) Assureurs Non-Vie
+
+Nous adoptons la même démarche pour les assureurs Non-Vie malgré l’absence de résultats forts aux tests de Granger.
+
+#### Fonds Propres - Non-Vie
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{FP}_t) = \alpha & + \rho \Delta \ln(\text{FP}_{t-1}) 
+& + \beta_1 \Delta \ln(\text{IPC})_{t-3}
+& + \beta_2 \Delta \text{TauxC}_{t-3}
+& + \beta_3 \Delta \text{TauxL}_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_fp_nvie_dynamique2 <- lm(
+  diff_fonds_propres ~ 
+    dplyr::lag(diff_fonds_propres, 1) + 
+    dplyr::lag(diff_ipc, 3) +
+    dplyr::lag(diff_taux_court, 3)+
+    dplyr::lag(diff_taux_long, 3),
+  data = data_non_vie
+)
+modelsummary(
+  list("Fonds Propres (Non-Vie)" = model_fp_nvie_dynamique2),
+  estimate = "{estimate}{stars}",
+  statistic = c("statistic", "p.value"), 
+  shape = term ~ statistic,
+  vcov = NeweyWest(model_fp_nvie_dynamique2),
+  fmt = 4,
+  title = "Analyse dynamique des Fonds Propres - Branche Non-Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+Les assureurs non-vie semblent davantage déconnectés des taux et des marchés financiers que les assureurs Vie. La dynamique de leurs fonds propres parait essentiellement dictée par sa propre inertie.
+Cependant, la constante est significative indiquant une croissance structurelle indépendante des fluctuations macro-financières. Cette dynamique suggère que la richesse nette de cette branche repose principalement sur le cycle d'exploitation (primes et sinistres) plutôt que sur le cycle financier.
+
+#### SCR - Non-Vie
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{SCR}_t) = \alpha & + \rho \Delta \ln(\text{SCR}_{t-1})
+& + \beta_1 \Delta \text{TauxC}_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_nvie_dynamique2 <- lm(
+  diff_scr ~ 
+    dplyr::lag(diff_scr, 1) +  
+    dplyr::lag(diff_taux_court,3),
+  data = data_non_vie
+)
+modelsummary(
+  list("SCR (Non-Vie)" = model_scr_nvie_dynamique2),
+  estimate = "{estimate}{stars}",
+  statistic = c("statistic", "p.value"), 
+  shape = term ~ statistic,
+  vcov = NeweyWest(model_scr_nvie_dynamique2),
+  fmt = 4,
+  title = "Analyse dynamique du SCR - Branche Non-Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+Les résultats montrent également qu’une hausse des taux d’intérêt de court terme réduit la croissance du SCR avec un retard de trois trimestres. Ce résultat suggère une transmission différée des conditions de taux aux exigences réglementaires en capital, possiblement via les mécanismes d’actualisation des engagements et l’évolution de l’exposition au risque de taux.
+La constante positive suggère une dynamique de croissance structurelle interne peu sensible aux chocs macro-financiers immédiats.
+
+### Ratio de solvabilité - Non-Vie
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{Ratio\_moyen}_t) = \alpha & + \rho \Delta \ln(\text{Ratio\_moyen}_{t-1})
+& + \beta_1 \Delta \text{TauxL}_{t-3} & + \beta_2 \Delta \text{TauxC}_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_ratio_nvie_dynamique2 <- lm(
+  diff_ratio ~ 
+    dplyr::lag(diff_ratio, 1) +
+    dplyr::lag(diff_taux_court,3)+
+    dplyr::lag(diff_taux_long,3),
+  data = data_non_vie
+)
+
+modelsummary(
+  list("Ratio (Non-Vie)" = model_ratio_nvie_dynamique2),
+  estimate = "{estimate}{stars}",
+  statistic = c("statistic", "p.value"), 
+  shape = term ~ statistic,
+  vcov = NeweyWest(model_ratio_nvie_dynamique2),
+  fmt = 4,
+  title = "Analyse dynamique du ratio de solvabilité - Branche Non-Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+Une hausse des taux d’intérêt de long terme améliore le ratio de solvabilité avec un retard de trois trimestres, probablement via l’augmentation des fonds propres et l’amélioration des revenus financiers. À l’inverse, les taux courts exercent un effet négatif sur le ratio de solvabilité. Ce résultat suggère qu’un relèvement des taux courts peut temporairement détériorer l’équilibre prudentiel des assureurs Non-Vie.
+
+Ces résultats doivent être interprétés avec prudence en raison de plusieurs limites économétriques. La taille réduite de l'échantillon restreint la puissance statistique des estimations et la corrélation entre certaines variables macro-financières peut générer des problèmes de multicolinéarité. 
+L'ensemble des modèles estimés satisfont les conditions de validité économétrique : les tests de Jarque-Bera, Breusch-Pagan et Ljung-Box ne rejettent pas la normalité des résidus, l'homoscédasticité et l'absence d'autocorrélation (cf. Annexe Tables). Néanmoins, compte tenu de la faible puissance de ces tests sur petit échantillon et de la sensibilité des p-values à la correction, l'estimateur de Newey-West a été appliqué à l'ensemble des modèles afin de garantir la robustesse des inférences.
+
+Par ailleurs, cette approche en différences ne permet pas d'identifier les relations d'équilibre de long terme. Ces éléments justifient le recours à une spécification ARDL qui permet d'intégrer simultanément dynamiques de court terme et relations de cointégration éventuelles.
+
+
 
 # Conclusion
 
-# Annxes
+# Annexes
 
 ### Analyse descriptive
 
@@ -839,3 +1617,335 @@ ggplot(monthly_DAX, aes(x=date))+
 
 DAX<-indices(monthly_DAX )%>%rename("dax_closed"=closed)
 ```
+
+# Modélisation
+
+# II - Régression en différence
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# 1ere specification
+model_ratio_vie <- lm(diff_ratio ~ rendement_stoxx + rendement_sp500 + diff_ipc + diff_taux_court + diff_taux_long + diff_pib, data = data_vie)
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+modelsummary(
+  model_ratio_vie,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], 
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats de la régression du ratio de solvabilité - Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.width=6, fig.height=3, fig.align='center'}
+# Diagnostic du modele
+res <- residuals(model_ratio_vie)
+# Calcul des tests
+dw <- dwtest(model_ratio_vie)
+bp <- bptest(model_ratio_vie)
+sh <- shapiro.test(res)
+lb <- Box.test(res, lag = 10, type = "Ljung-Box") # Test sur les 10 premiers lags
+
+# Création du tableau de synthèse
+diag_table <- data.frame(
+  Test = c("Autocorrélation (Durbin-Watson)", 
+           "Indépendance Globale (Ljung-Box)",
+           "Homoscédasticité (Breusch-Pagan)", 
+           "Normalité (Shapiro-Wilk)"),
+  Statistique = c(round(dw$statistic, 4), round(lb$statistic, 4), 
+                  round(bp$statistic, 4), round(sh$statistic, 4)),
+  P_value = c(round(dw$p.value, 4), round(lb$p.value, 4), 
+              round(bp$p.value, 4), round(sh$p.value, 4)),
+  Verdict = c(
+    ifelse(dw$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée"),
+    ifelse(lb$p.value > 0.05, "Bruit blanc confirmé", "Hypothèse rejetée"),
+    ifelse(bp$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée"),
+    ifelse(sh$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée")
+  )
+)
+
+kable(diag_table, booktabs = TRUE, caption = "Tests sur les résidus modèle ratio - Vie") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = FALSE)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_fp_vie_dynamique2 <- lm(
+  diff_fonds_propres ~ 
+    dplyr::lag(diff_fonds_propres, 1) +  
+    dplyr::lag(diff_taux_long, 1) +  
+    dplyr::lag(rendement_sp500, 2)+
+    dplyr::lag(diff_ipc, 4),
+  data = data_vie
+)
+
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_test <- Box.test(residuals(model_fp_vie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+library(tseries)
+jb_test <- jarque.bera.test(residuals(model_fp_vie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+library(lmtest)
+bp_test <- bptest(model_fp_vie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+library(car)
+vif_values <- vif(model_fp_vie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_df <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_test$statistic, jb_test$statistic, bp_test$statistic), 4),
+  `p-value` = round(c(lb_test$p.value, jb_test$p.value, bp_test$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_df,
+      caption = "Tests diagnostiques - Fonds Propres Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+# VIF dans un tableau séparé
+vif_df <- data.frame(
+  Variable = names(vif_values),
+  VIF = round(vif_values, 3)
+)
+
+kable(vif_df,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fonds Propres Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_vie_dynamique2 <- lm(
+  diff_scr ~ 
+    dplyr::lag(diff_scr, 1) +  
+    dplyr::lag(diff_taux_long, 1) +   
+    dplyr::lag(diff_ipc, 3),
+  data = data_vie
+)
+
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testscrv <- Box.test(residuals(model_scr_vie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testscrv <- jarque.bera.test(residuals(model_scr_vie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testscrv <- bptest(model_scr_vie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesscrv <- vif(model_scr_vie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfscrv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testscrv$statistic, jb_testscrv$statistic, bp_testscrv$statistic), 4),
+  `p-value` = round(c(lb_testscrv$p.value, jb_testscrv$p.value, bp_testscrv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_df,
+      caption = "Tests diagnostiques - SCR Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+# VIF dans un tableau séparé
+vif_dfscrv <- data.frame(
+  Variable = names(vif_valuesscrv),
+  VIF = round(vif_valuesscrv, 3)
+)
+
+kable(vif_dfscrv,
+      caption = "Facteurs d'inflation de la variance (VIF) - SCR Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_ratio_vie_dynamique2 <- lm(
+  diff_ratio ~ 
+    dplyr::lag(diff_ratio, 1) +  
+    dplyr::lag(rendement_sp500, 3),
+  data = data_vie
+)
+
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testrv <- Box.test(residuals(model_ratio_vie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testrv <- jarque.bera.test(residuals(model_ratio_vie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testrv <- bptest(model_ratio_vie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesrv <- vif(model_ratio_vie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfrv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testrv$statistic, jb_testrv$statistic, bp_testrv$statistic), 4),
+  `p-value` = round(c(lb_testrv$p.value, jb_testrv$p.value, bp_testrv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfrv,
+      caption = "Tests diagnostiques - Ratio de solvabilité Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfrv <- data.frame(
+  Variable = names(vif_valuesrv),
+  VIF = round(vif_valuesrv, 3)
+)
+
+kable(vif_dfrv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Ratio Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_fp_nvie_dynamique2 <- lm(
+  diff_fonds_propres ~ 
+    dplyr::lag(diff_fonds_propres, 1) + 
+    dplyr::lag(diff_ipc, 3) +
+    dplyr::lag(diff_taux_court, 3)+
+    dplyr::lag(diff_taux_long, 3),
+  data = data_non_vie
+)
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testnv <- Box.test(residuals(model_fp_nvie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testnv <- jarque.bera.test(residuals(model_fp_nvie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testnv <- bptest(model_fp_nvie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesnv <- vif(model_fp_nvie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfnv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testnv$statistic, jb_testnv$statistic, bp_testnv$statistic), 4),
+  `p-value` = round(c(lb_testnv$p.value, jb_testnv$p.value, bp_testnv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfnv,
+      caption = "Tests diagnostiques - Fonds propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfnv <- data.frame(
+  Variable = names(vif_valuesnv),
+  VIF = round(vif_valuesnv, 3)
+)
+
+kable(vif_dfnv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_nvie_dynamique2 <- lm(
+  diff_scr ~ 
+    dplyr::lag(diff_scr, 1) +  
+    dplyr::lag(diff_taux_court,3),
+  data = data_non_vie
+)
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testscrnv <- Box.test(residuals(model_scr_nvie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testscrnv <- jarque.bera.test(residuals(model_scr_nvie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testscrnv <- bptest(model_scr_nvie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesscrnv <- vif(model_scr_nvie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfscrnv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testscrnv$statistic, jb_testscrnv$statistic, bp_testscrnv$statistic), 4),
+  `p-value` = round(c(lb_testscrnv$p.value, jb_testscrnv$p.value, bp_testscrnv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfscrnv,
+      caption = "Tests diagnostiques - Fonds propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfscrnv <- data.frame(
+  Variable = names(vif_valuesscrnv),
+  VIF = round(vif_valuesscrnv, 3)
+)
+
+kable(vif_dfscrnv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_ratio_nvie_dynamique2 <- lm(
+  diff_ratio ~ 
+    dplyr::lag(diff_ratio, 1) +
+    dplyr::lag(diff_taux_court,3)+
+    dplyr::lag(diff_taux_long,3),
+  data = data_non_vie
+)
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testrnv <- Box.test(residuals(model_ratio_nvie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testrnv <- jarque.bera.test(residuals(model_ratio_nvie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testrnv <- bptest(model_ratio_nvie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesrnv <- vif(model_ratio_nvie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfrnv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testrnv$statistic, jb_testrnv$statistic, bp_testrnv$statistic), 4),
+  `p-value` = round(c(lb_testrnv$p.value, jb_testrnv$p.value, bp_testrnv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfrnv,
+      caption = "Tests diagnostiques - Fonds propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfrnv <- data.frame(
+  Variable = names(vif_valuesrnv),
+  VIF = round(vif_valuesrnv, 3)
+)
+
+kable(vif_dfrnv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
