@@ -1,0 +1,142 @@
+---
+title: "Rapport de statistiques appliquées"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    number_sections: true
+lang: fr
+geometry: margin=2.5cm
+---
+
+# Lecture et analyse des rapports annuels des compagnies d’assurance
+
+Dans cette partie, nous avons parcouru un ensemble de rapports sur la solvabilité et la situation financière de plusieurs compagnies d’assurance entre 2019 et 2025 afin d’approfondir la compréhension des mécanismes par lesquels les variables macroéconomiques et macro-financières affectent la solvabilité des assureurs. Nous nous sommes concentrés uniquement sur les parties des rapports annuels qui traitent de la solvabilité en nous focalisant sur :
+
+- la variation des SCR, des fonds propres et des ratios de solvabilité ;
+- la variation des variables macro-financières.
+
+Dans un second temps, nous avons mis ces évolutions en relation avec la chronologie macroéconomique établie précédemment afin de mieux comprendre le lien entre la conjoncture économique et la situation des assureurs. Cette comparaison montre plusieurs éléments importants. D’abord, l’inflation pénalise particulièrement les assureurs non-vie, car elle augmente le coût des sinistres, des réparations et, plus généralement, des charges techniques. Elle réduit donc leurs marges, pèse sur le résultat net et peut aussi conduire à renforcer les provisions. Les assureurs vie sont également touchés, mais de façon différente : l’inflation diminue le rendement réel des placements et rend certains produits d’épargne concurrents plus attractifs, ce qui peut freiner la collecte et réduire la rentabilité des contrats.
+
+Par ailleurs, cette analyse confirme que les taux d’intérêt jouent un rôle central dans la solvabilité des assureurs. Lorsque les taux restent bas, les placements obligataires rapportent moins et les engagements de long terme deviennent plus contraignants, surtout en assurance vie. À l’inverse, la remontée des taux peut alléger certaines charges d’actualisation, mais elle peut aussi entraîner des pertes de valeur sur les actifs détenus. Enfin, la volatilité des marchés financiers a elle aussi un impact important, car elle agit à la fois sur la valeur des actifs, sur les fonds propres et sur le capital requis. Ainsi, les rapports annuels confirment que la solvabilité des assureurs dépend fortement de l’environnement macro-financier, mais aussi de leur exposition aux différents risques et de leur capacité à absorber les chocs.
+
+Ces éléments permettent d’apporter un premier éclairage sur la problématique étudiée et d’orienter l’analyse statistique qui sera menée par la suite, afin de faciliter l’interprétation des résultats.
+
+# Détail des variables qualitatives
+
+## Nature
+
+Cette variable décrit l’activité d’assurance de la société :
+
+- **Non Vie** : assurance dommages, automobile, habitation, santé, etc.
+- **Vie/Capitalisation** : assurance vie, épargne et capitalisation.
+- **Mixte** : compagnie présente à la fois sur les métiers Vie et Non-Vie.
+- **Réassurance** : activité de réassurance.
+- **FRPS** : fonds de retraite professionnelle supplémentaire.
+
+Dans notre analyse, nous nous intéresserons seulement aux natures **Non-Vie** et **Mixte**.
+
+## Famille
+
+Cette variable classe les assureurs selon leur modèle d’organisation :
+
+- **Mutualiste** : assureur détenu par ses sociétaires, sans actionnaires, dont les résultats sont principalement réinvestis au service des assurés.
+- **Traditionnel** : assureur organisé en société de capitaux, détenu par des actionnaires et orienté vers la rentabilité financière.
+- **Bancassureur** : assureur intégré à un groupe bancaire, qui distribue ses produits principalement via le réseau bancaire.
+
+Cette distinction est utile pour comparer les profils de solvabilité, car les contraintes financières et les sources de financement peuvent différer selon le modèle.
+
+## Remise
+
+Cette variable indique la périodicité de la donnée :
+
+- **T1, T2, T3, T4** : remises trimestrielles ;
+- **A** : remise annuelle.
+
+Dans le jeu de données, certaines années ne contiennent pas toutes les remises, ce qui traduit simplement des différences de disponibilité des données selon les périodes.
+
+# Synthèse SCR
+
+Le SCR (*Solvency Capital Requirement*) représente l’exigence en fonds propres permettant à un assureur de faire face à ses risques sur un horizon d’un an avec une probabilité de 99,5 %, soit l’équivalent d’une faillite théorique tous les 200 ans. Les assureurs peuvent utiliser la formule standard définie par l’EIOPA, un modèle interne propre à leur structure de risque, ou une combinaison des deux (modèle partiel). Le SCR se décompose en trois termes :
+
+$$SCR = BSCR + SCR_{op} - Adj$$
+
+Le BSCR (*Basic SCR*) agrège les SCR par type de risque à l’aide d’une matrice de corrélation. L’Adj représente la capacité d’absorption des pertes par les provisions techniques et les impôts différés. Chaque SCR élémentaire correspond à la perte de fonds propres résultant d’un choc instantané calibré par l’EIOPA.
+
+$$BSCR = \sqrt{\sum_{i,j} Corr_{i,j} \cdot SCR_i \cdot SCR_j} + SCR_{intangibles}$$
+
+Les coefficients $Corr_{i,j}$ de la formule du BSCR sont issus de la matrice suivante :
+
+|  | Marché | Défaut | Sous. Vie | Sous. Santé | Sous. Non-vie |
+|---|---:|---:|---:|---:|---:|
+| Marché | 1 | 0,25 | 0,25 | 0,25 | 0,25 |
+| Défaut | 0,25 | 1 | 0,25 | 0,25 | 0,5 |
+| Souscription Vie | 0,25 | 0,25 | 1 | 0,25 | 0 |
+| Souscription Santé | 0,25 | 0,25 | 0,25 | 1 | 0 |
+| Souscription Non-vie | 0,25 | 0,5 | 0 | 0 | 1 |
+
+## 1. Risque de souscription
+
+Le risque de souscription couvre l’incertitude sur les résultats des contrats, due notamment à des erreurs de tarification, de provisionnement ou à la survenance d’événements extrêmes. Il se divise en trois modules distincts, chacun calculé par agrégation matricielle de ses propres sous-risques :
+
+$$SCR_{vie} = \sqrt{\sum_{(i,j)} Corr^{Vie}_{i,j} \cdot SCR_i \cdot SCR_j}$$
+
+$$SCR_{sant\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{Sant\acute{e}}_{i,j} \cdot SCR_i \cdot SCR_j}$$
+
+$$SCR_{non-vie} = \sqrt{\sum_{(i,j)} Corr^{NV}_{i,j} \cdot SCR_i \cdot SCR_j}$$
+
+La matrice $Corr^{Vie}$ pour le risque vie comprend sept sous-risques. Les corrélations négatives, par exemple entre mortalité et longévité (−0,25), reflètent leur nature opposée : une hausse de la mortalité est défavorable pour les contrats décès mais favorable pour les rentes viagères, ce qui justifie une compensation partielle dans le calcul du SCR.
+
+### Matrice des sous-risques vie
+
+|  | Mortalité | Longévité | Invalidité | Dépenses | Révision | Cessation | Catastrophe |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Mortalité | 1 | -0,25 | 0,25 | 0,25 | 0 | 0 | 0,25 |
+| Longévité | -0,25 | 1 | 0 | 0,25 | 0,25 | 0,25 | 0 |
+| Invalidité | 0,25 | 0 | 1 | 0,5 | 0 | 0 | 0,25 |
+| Dépenses | 0,25 | 0,25 | 0,5 | 1 | 0,5 | 0,5 | 0,25 |
+| Révision | 0 | 0,25 | 0 | 0,5 | 1 | 0 | 0 |
+| Cessation | 0 | 0,25 | 0 | 0,5 | 0 | 1 | 0,25 |
+| Catastrophe | 0,25 | 0 | 0,25 | 0,25 | 0 | 0,25 | 1 |
+
+## 2. Risque de marché
+
+Le risque de marché mesure la sensibilité de l’assureur aux évolutions des marchés financiers (taux, actions, immobilier, devises, spreads). Il est calculé par agrégation matricielle de six sous-risques :
+
+$$SCR_{march\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{March\acute{e}}_{i,j} \cdot SCR_i \cdot SCR_j}$$
+
+|  | Taux | Actions | Immobilier | Spread | Concentration | Devise |
+|---|---:|---:|---:|---:|---:|---:|
+| Taux d’intérêt | 1 | A | A | A | 0 | 0,25 |
+| Actions | A | 1 | 0,75 | 0,75 | 0 | 0,25 |
+| Immobilier | A | 0,75 | 1 | 0,5 | 0 | 0,25 |
+| Spread | A | 0,75 | 0,5 | 1 | 0 | 0,25 |
+| Concentration | 0 | 0 | 0 | 0 | 1 | 0 |
+| Devise | 0,25 | 0,25 | 0,25 | 0,25 | 0 | 1 |
+
+Le paramètre $A$ vaut 0 si $SCR_{taux}$ est issu d’un choc à la hausse, 0,5 sinon.
+
+### Détail des formules et chocs par sous-risque
+
+| Sous-risque | Formule / Choc |
+|---|---|
+| Actions | $SCR_{actions}$ dépend du choc sur les actions selon leur nature, avec un niveau différent pour les actions cotées, non cotées et l’infrastructure éligible. Un ajustement symétrique vient moduler ce choc. |
+| Spread | Hausse des spreads appliquée aux obligations, prêts, titrisations et dérivés de crédit. L’intensité du choc dépend de la notation de l’émetteur et de la duration de la créance. |
+| Taux d’intérêt | Chocs de hausse et de baisse des taux, plus élevés à court terme puis décroissants linéairement avec l’échéance. Les valeurs intermédiaires sont obtenues par interpolation. |
+| Change | Choc de ±25 % sur les devises étrangères par rapport à la monnaie locale. Le SCR retenu correspond au scénario le plus défavorable entre hausse et baisse. |
+| Immobilier | Choc de −25 % sur la valeur de marché de l’ensemble des actifs immobiliers détenus. |
+| Concentration | Mesure du risque lié à une exposition trop importante sur une même signature. Le calcul dépend du ratio de solvabilité de l’entreprise et de la qualité de crédit des contreparties. |
+
+## 3. Risque de défaut de contrepartie
+
+Ce risque couvre la perte potentielle liée à la défaillance d’une contrepartie. Il se distingue du risque de spread, qui concerne la dégradation de la qualité de crédit des émetteurs de valeurs mobilières, et concerne exclusivement :
+
+| Contrepartie | Description |
+|---|---|
+| Réassureurs | Défaut d’un réassureur sur ses engagements de couverture envers le cédant. C’est l’une des expositions les plus significatives pour les assureurs ayant fortement externalisé leur risque. |
+| Banques dépositaires | Défaut d’un établissement bancaire détenant les actifs en dépôt. Cela concerne directement la valeur liquidative du portefeuille d’investissements de l’assureur. |
+| Autres débiteurs | Intermédiaires d’assurance, preneurs, montants à recevoir au titre des créances sur contrats. Cela comprend aussi les débiteurs au titre des procédures de recours et subrogations. |
+
+Dans la matrice BSCR, le risque de défaut présente une corrélation de 0,25 avec tous les autres modules, à l’exception de la souscription non-vie avec laquelle la corrélation est portée à 0,5, reflétant l’interdépendance entre la sinistralité et les défauts de réassureurs.
