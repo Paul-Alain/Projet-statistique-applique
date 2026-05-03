@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 
 
 ```{r setup, include=FALSE}
@@ -92,7 +97,7 @@ Cette section est consacrée à l’analyse univariée des variables, visant à 
 
 L’activité d’assurance non-vie concentre la majorité des compagnies du marché. À l’inverse, les Fonds de Retraite et de Prévoyance Sociale (FRPS) demeurent très faiblement représentés, avec une part limitée à $0,91 \%$. De même, le segment de la réassurance ne regroupe qu’une fraction marginale des compagnies d’assurance, soit $2,56 \%$.
 
-```{r}
+```{r, out.width='60%', fig.align='center'}
 # Percentage computation
 df_pct <- df %>%
   group_by(Nature) %>%
@@ -119,7 +124,7 @@ ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nat
 
 La structure du marché est majoritairement dominée par les organismes mutualistes, lesquels représentent $53,71 \%$ de l’ensemble des compagnies. Le solde du marché se répartit de manière relativement équilibrée entre les assureurs traditionnels et les bancassureurs.
 
-```{r}
+```{r, out.width='60%', fig.align='center'}
 # Percentage calculation per Famille
 df_pct <- df %>%
   group_by(Famille) %>%
@@ -147,7 +152,7 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
 
 Dans un soucis d'avoir des données de taille comparable entre les catégorie mixte, non-vie et vie, nous avons fusionné les catégories mixte et vie.
 
-```{r}
+```{r, out.width='60%', fig.align='center'}
 ## Crossed distribution
 df_pct <- df %>%
   group_by(Nature, Famille) %>%
@@ -295,7 +300,7 @@ La base de données contient `r length(df_quarterly$SOCIETE)` trimestres avec de
 
   (i) **Ratio de solvabilité**
 
-```{r}
+```{r, out.width='60%', fig.align='center'}
 ggplot(data = evol, aes(x = Trimestre-0.75, y= Ratio_Moyen))+
 geom_line(aes(linetype = "Trimestrielle"), color = "#3cc8e7")+
 geom_point(size = 1.2, color = "#3cc8e7")+
@@ -326,7 +331,7 @@ Entre 2018 et 2020, on remarque une désynchronisation très forte entre le rati
 
   (ii) **Fonds Propres**
 
-```{r 4}
+```{r 4, out.width='60%', fig.align='center'}
 ggplot(data = evol, aes(x = Trimestre-0.75, y= FONDS_PROPRES_Moyen/1000000))+
 geom_line(aes(linetype = "Trimestrielle"), color = "#3cc8e7")+
 geom_point(size = 1.2, color = "#3cc8e7")+
@@ -357,7 +362,7 @@ Les données trimestrielles offrent une vision plus détaillée de l’évolutio
 Nous observons également un écart important entre les valeurs annuelles et trimestrielles, aussi bien pour les sociétés d’assurance Non‑Vie que pour les sociétés Vie. Ce biais pourrait provenir de la taille des entreprises déclarant des données trimestrielles. En effet, toutes les sociétés ne transmettent pas d’informations trimestrielles. Seules `r length(unique(df_quarterly$SOCIETE))` sociétés de la base disposent d’au moins une observation trimestrielle, ce qui représente environ `r round(length(unique(df_quarterly$SOCIETE))*100/length(unique(df_quarterly_complet$SOCIETE)),2)`$\%$
  de l’ensemble des sociétés recensées.
 
-```{r Décalage}
+```{r Décalage,out.width='60%', fig.align='center'}
 societe <- unique(df_quarterly$SOCIETE)
 df_annual_trim <- df_annual%>%
   mutate(Any_Trim = ifelse(SOCIETE %in% societe, "OUI", "NON"))%>%
@@ -584,7 +589,7 @@ data_final <- data_final%>%mutate(RATIO = somme_fp/somme_scr,
 
 
   
-```{r 8}
+```{r 8, out.width='60%', fig.align='center'}
 
 # 2. Création du graphique
 df_plot <- df_resultats%>%
