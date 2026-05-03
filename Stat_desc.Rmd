@@ -642,6 +642,7 @@ La complexité des interactions entre les variables macro-financières et la sol
 
 ## II - Régressions en différence
 
+
 ```{r, include=FALSE}
 # Indicateur de solvabilité
 df_ajt <- read_csv("trim_ajustées.csv")
@@ -1073,7 +1074,7 @@ Les hypothèses du test KPSS sont les suivantes :
 \end{itemize}
 Si $t_{stat}$ > $t_{crit}$ : On rejette *H0* au seuil de significativité choisi.
 
-Ainsi, les tests ADF et KPSS appliqués aux séries transformées confirment leur stationnarité validant les conditions d’application des modèles économétriques.
+Ainsi, les tests ADF et KPSS appliqués aux séries transformées confirment leur stationnarité validant les conditions d’application du modèle de régression linéaire Moindres Carrés Ordinaires.
 
 ### 3) Test de Causalité de Granger
 
@@ -1131,7 +1132,7 @@ granger_nv_multi <- map_df(targets_nv, function(t) {
 
 ### 4) Estimation du modèle
 
-Afin d’éviter les problèmes de multicolinéarité entre indices boursiers fortement corrélés, nous avons retenu uniquement le S&P 500 et l’Euro Stoxx. Ce choix permet de conserver une représentation pertinente des dynamiques des marchés, en combinant un indice global et un indice européen, cohérent avec l’exposition des assureurs étudiés.
+Afin d’éviter les problèmes de multicolinéarité entre indices boursiers fortement corrélés, nous avons retenu uniquement le S&P 500 et l’Euro Stoxx. Ce choix permet de conserver une représentation pertinente des dynamiques des marchés, en combinant un indice global et un indice européen ce qui est cohérent avec l’exposition des assureurs étudiés.
 
 #### 4.1) Spécifications
 
@@ -1178,8 +1179,7 @@ modelsummary(
 ```
 
 L'ensemble des coefficients sont significatifs au seuil de 5% après correction des écarts-types par la méthode de Newey-West. Les résidus ne présentent pas d'autocorrélation selon le test de Ljung-Box, le modèle semble donc robuste.
-Ainsi, l'inflation à l'année N-1 ralentit la croissance des fonds propres des assureurs, probablement suite à l'augmentation des coûts de gestion et aux délais d'ajustement des primes.
-Les résultats mettent en évidence une forte sensibilité des fonds propres des assureurs Vie aux conditions macro-financières. La hausse des taux d’intérêt de long terme exerce un effet négatif sur la croissance des fonds propres traduisant probablement la baisse de la valeur de marché des portefeuilles obligataires lors des phases de remontée des taux. À l’inverse, les performances des marchés actions internationaux, approximées par le S&P 500, soutiennent positivement l’évolution des fonds propres avec un décalage de deux trimestres, confirmant l’exposition importante des assureurs Vie aux marchés financiers.
+Les résultats mettent en évidence une forte sensibilité des fonds propres des assureurs Vie aux conditions macro-financières. La hausse des taux d’intérêt de long terme exerce un effet négatif sur la croissance des fonds propres traduisant probablement la baisse de la valeur de marché des portefeuilles obligataires lors des phases de remontée des taux. À l’inverse, les performances des marchés actions internationaux, approximées par le S&P 500, soutiennent positivement l’évolution des fonds propres avec un décalage de deux trimestres confirmant l’exposition importante des assureurs Vie aux marchés financiers.
 L’inflation apparaît également comme un facteur défavorable à la solvabilité avec un effet retardé de quatre trimestres. Ce résultat peut refléter l’augmentation progressive des coûts de gestion et le délai d'ajustement des primes. Enfin, la significativité du terme autorégressif souligne l’existence d’une dynamique de persistance des fonds propres, les chocs observés tendent à se diffuser progressivement dans le temps.
 
 ##### SCR - Vie
@@ -1365,7 +1365,7 @@ modelsummary(
 
 Une hausse des taux d’intérêt de long terme améliore le ratio de solvabilité avec un retard de trois trimestres, probablement via l’augmentation des fonds propres et l’amélioration des revenus financiers. À l’inverse, les taux courts exercent un effet négatif sur le ratio de solvabilité. Ce résultat suggère qu’un relèvement des taux courts peut temporairement détériorer l’équilibre prudentiel des assureurs Non-Vie.
 
-Ces résultats doivent être interprétés avec prudence en raison de plusieurs limites économétriques. La taille réduite de l'échantillon restreint la puissance statistique des estimations et la corrélation entre certaines variables macro-financières peut générer des problèmes de multicolinéarité. 
+Ces résultats doivent être interprétés avec prudence en raison de plusieurs limites économétriques. La taille réduite de l'échantillon restreint la puissance statistique des estimations.
 L'ensemble des modèles estimés satisfont les conditions de validité économétrique : les tests de Jarque-Bera, Breusch-Pagan et Ljung-Box ne rejettent pas la normalité des résidus, l'homoscédasticité et l'absence d'autocorrélation (cf. Annexe Tables). Néanmoins, compte tenu de la faible puissance de ces tests sur petit échantillon et de la sensibilité des p-values à la correction, l'estimateur de Newey-West a été appliqué à l'ensemble des modèles afin de garantir la robustesse des inférences. Par ailleurs, un biais d'endogénéité lié à l'omission de variables pertinentes ne peut être exclu. Les variables macro-financières retenues sont susceptibles d'être corrélées avec d'autres déterminants de la solvabilité non intégrés au modèle ce qui limite la validité de cette modélisation.
 
 Par ailleurs, cette approche en différences ne permet pas d'identifier les relations d'équilibre de long terme. Ces éléments justifient le recours à une spécification ARDL qui permet d'intégrer simultanément dynamiques de court terme et relations de cointégration éventuelles.
