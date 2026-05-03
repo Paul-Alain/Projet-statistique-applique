@@ -41,8 +41,7 @@ library(insee)
 library(car) 
 library(sandwich)
 library(ARDL)
-install.packages('tinytex')
-tinytex::install_tinytex()
+
 ```
 
 ```{r, include=FALSE}
