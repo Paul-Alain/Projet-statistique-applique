@@ -1,0 +1,1271 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\usepackage{siunitx}
+
+    \newcolumntype{d}{S[
+      table-align-text-before=false,
+      table-align-text-after=false,
+      input-symbols={-,\*+()}
+    ]}
+  
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{\vspace{-2.5em}}
+
+\begin{document}
+
+\section{Introduction}\label{introduction}
+
+L'activité d'assurance repose sur un mécanisme de production inversé :
+l'assureur perçoit les primes avant de connaître avec certitude le
+montant réel des dépenses qu'il devra engager. En effet, celui-ci est
+lié à l'assuré par une promesse d'indemnisation en cas de réalisation du
+risque couvert. Le maintien d'un tel système nécessite donc un
+renforcement constant des dispositifs de contrôle de la capacité des
+assureurs à honorer leurs engagements. C'est dans cette perspective que
+s'inscrit le cadre réglementaire de Solvabilité II, entré en vigueur en
+2016, dont l'objectif principal est de garantir que les compagnies
+d'assurance disposent de fonds propres suffisants pour faire face à
+leurs obligations et ainsi instaurer un climat de confiance entre
+assureurs et assurés. La solvabilité d'une compagnie d'assurance désigne
+sa capacité à respecter ses engagements financiers à court, moyen et
+long terme, notamment en matière de règlement des sinistres et de
+prestations contractuelles. Elle constitue ainsi un indicateur
+fondamental de la solidité financière des assureurs. Toutefois, cette
+solvabilité demeure fortement influencée par l'environnement économique
+et financier. Par exemple, une hausse du taux d'inflation peut entraîner
+une augmentation mécanique du coût des sinistres, tandis qu'une
+variation des taux d'intérêt affecte à la fois les perspectives de
+rendement des placements financiers et la valorisation des obligations
+détenues par les compagnies d'assurance. Dans un contexte marqué par la
+volatilité des marchés financiers, les risques de perturbation des
+chaînes de valeur économiques, ainsi que le renforcement des exigences
+prudentielles, il devient essentiel de mieux comprendre les déterminants
+de la solvabilité des entreprises d'assurance. Cette problématique est
+d'autant plus importante que la stabilité et la pérennité du secteur
+assurantiel en dépendent directement. Le présent travail a donc pour
+objectif d'évaluer l'impact des variables financières et
+macroéconomiques sur la solvabilité des entreprises d'assurance en
+France. Plus précisément, il s'agira d'identifier les variables les plus
+significatives et de mesurer leur influence sur la solidité financière
+des assureurs. La résolution de cette problématique reposera sur la
+mobilisation d'outils économétriques appliqués à des données
+financières, macroéconomiques et à des indicateurs de solvabilité
+propres au secteur de l'assurance. Cette étude permettra notamment
+d'apprécier le degré de dépendance de la solvabilité des assureurs
+vis-à-vis des variables macro-financières. Elle constitue ainsi un outil
+d'aide à la décision pour les compagnies d'assurance, les décideurs
+publics ainsi que les autorités de régulation prudentielle.
+
+\section{Révue de la littérature}\label{ruxe9vue-de-la-littuxe9rature}
+
+Les assureurs jouent un rôle majeur dans le système financier en tant
+qu'investisseurs institutionnels et leur exposition aux différents
+risques est structurante pour leur solvabilité. Dans le cadre prudentiel
+Solvabilité II, la sensibilité des fonds propres aux variations des
+taux, des marchés actions et plus généralement de la conjoncture
+économique est fortement encadrée. Cette revue de littérature vise à
+synthétiser les principaux résultats existants.
+
+\subsubsection{Impact des taux d'intérêt et du marché obligataire sur la
+solvabilité des
+assureurs}\label{impact-des-taux-dintuxe9ruxeat-et-du-marchuxe9-obligataire-sur-la-solvabilituxe9-des-assureurs}
+
+La longue durée des engagements d'assurance rend ces entreprises
+particulièrement sensibles à la structure par terme des taux. Les stress
+tests réalisés par l'EIOPA mettent en évidence une forte sensibilité des
+entreprises européennes d'assurance aux chocs de marché, révélant
+l'exposition directe du SCR aux variations de taux. L'environnement
+prolongé de taux bas a exercé une pression sur la solvabilité et la
+rentabilité des assureurs notamment à travers leurs fonds propres. La
+réévaluation des primes de risques suite à la remontée des taux peut
+ainsi entraîner des pertes importantes dans les portefeuilles
+obligataires, affectant le ratio de solvabilité (EIOPA, 2018) {[}1{]}.
+Dans le cadre de Solvabilité II, la courbe des taux sans risque utilisée
+pour actualiser les flux futurs constitue un élément central dans le
+calcul des provisions Best Estimates. Un abaissement durable de cette
+courbe entraîne une hausse des provisions, particulièrement pour les
+passifs de longue duration, ce qui réduit mécaniquement les fonds
+propres disponibles (Aalala, 2021) {[}7{]}. Par ailleurs, Berdin et
+Gründl (2015) {[}2{]} montrent qu'un environnement de faibles taux peut
+conduire les assureurs à accroître leur exposition à des actifs plus
+risqués afin de compenser la faiblesse des rendements. Cette
+réallocation accroît la sensibilité du bilan aux variations de taux
+d'intérêt. Ces travaux confirment que la gestion actif-passif et la
+duration des portefeuilles constituent des éléments centraux dans la
+maîtrise du risque de solvabilité. Enfin, Poufinas et Siopi (2024)
+{[}3{]} mettent en évidence une relation inverse entre le développement
+du marché obligataire et le ratio de solvabilité. Un marché obligataire
+plus développé se caractérise par une meilleure liquidité et une
+meilleure stabilité, conduisant à une hausse de la demande en
+obligations et accroit leur prix. Cette appréciation de la valeur des
+obligations peut accroître l'exposition au risque de crédit et de
+spread, augmentant ainsi le capital réglementaire requis.
+
+\paragraph{Impact du marché actions, de la volatilité et des
+corrélations de
+marché}\label{impact-du-marchuxe9-actions-de-la-volatilituxe9-et-des-corruxe9lations-de-marchuxe9}
+
+L'exposition des compagnies d'assurance au marché actions s'est accrue
+dans un contexte de hausse des taux et d'inflation élevée. Face à cette
+remontée des taux, l'EIOPA observe une réallocation partielle des
+portefeuilles vers des actifs plus risqués, notamment les actions, afin
+de préserver le rendement, au prix d'un besoin accru en capital
+réglementaire. Les travaux de Baranoff et Sager (2002) {[}11{]} montrent
+qu'une exposition accrue aux risques financiers, notamment actions,
+crédit et taux, s'accompagne d'un niveau de capital requis plus élevé
+afin d'absorber la volatilité des marchés. Les fluctuations de la valeur
+de marché affectent directement les fonds propres et introduisent une
+volatilité significative dans le ratio de solvabilité (Rapport ACM 2023)
+{[}6{]}. Dans cette logique, les travaux de Pénasse et Dezorme (2021)
+{[}5{]} mettent en évidence un arbitrage entre le rendement espéré des
+actions et le surplus de SCR imposé par Solvabilité II.
+
+\subsubsection{Rôle des variables macroéconomiques : inflation et cycle
+économique}\label{ruxf4le-des-variables-macrouxe9conomiques-inflation-et-cycle-uxe9conomique}
+
+Au-delà des variables financières, la littérature souligne que la
+conjoncture macroéconomique, notamment l'inflation et la croissance,
+exerce un effet significatif sur la solvabilité des assureurs via la
+profitabilité, le niveau des sinistres et la dynamique des primes. Les
+travaux récents de l'EIOPA montrent que l'inflation exerce une pression
+négative sur la valeur réelle et le rendement des actifs non indexés
+ainsi que sur la rentabilité des assureurs. Pour les assureurs non-vie,
+elle augmente également le coût des sinistres et des charges
+d'exploitation. Pour les assureurs vie, une inflation inattendue peut
+rendre les provisions techniques insuffisantes et dégrader la
+rentabilité technique, ce qui exerce une pression négative sur la
+solvabilité (EIOPA, 2023) {[}9{]}. L'étude de Gonji et al.~(2020)
+{[}10{]} met également en évidence un impact du taux d'inflation et du
+PIB sur la croissance et la rentabilité des compagnies d'assurance. Une
+croissance économique soutenue favorise généralement la demande
+d'assurance et la capacité des assureurs à générer des fonds propres,
+tandis qu'un ralentissement économique peut dégrader la qualité des
+actifs et peser sur le ratio de solvabilité.
+
+Dans l'ensemble, la littérature met en évidence le rôle central des
+variables macro-financières dans la dynamique de solvabilité, avec des
+effets différenciés selon les branches. Les assureurs Vie apparaissent
+généralement plus sensibles aux taux et aux marchés financiers en raison
+de la longue duration de leurs engagements, tandis que la branche
+Non-Vie semble davantage influencée par l'inflation et le cycle
+d'exploitation. Notre travail s'inscrit dans cette lignée tout en s'en
+distinguant sur plusieurs points. D'une part, nous mobilisons des
+données Solvabilité II françaises sur la période 2016-2025 ce qui permet
+de travailler dans un cadre réglementaire homogène peu exploité
+empiriquement. D'autre part, nous combinons trois approches
+complémentaires --- modèle en différences, ARDL et données de panel ---
+afin de capter simultanément les dynamiques de court terme, les
+relations d'équilibre de long terme et l'hétérogénéité individuelle des
+assureurs. Enfin, la distinction systématique entre branches Vie et
+Non-Vie constitue un apport empirique par rapport aux études qui
+traitent le secteur de façon agrégée.
+
+\section{Chronologie des
+évènements}\label{chronologie-des-uxe9vuxe8nements}
+
+Nous avons réalisé une chronologie des évènements macroéconomiques et
+macro-financiers entre 2016 et 2025 (période de nos données) ayant
+impacté la solvabilité et l'activité des assureurs. Cela afin de déceler
+les variables pertinentes pour notre analyse et afin de déceler des
+premiers mécanismes dans l'évolution et la sensibilité du ratio de
+solvabilité aux variables macro-financières. Nous avons relevé trois
+grandes phases économiques sur cette période. De 2016 à 2020, les
+assureurs étaient placés dans un environnement de taux d'intérêt très
+bas qui a exercé une pression négative sur leur ratio de solvabilité. En
+effet, les revenus obligataires étaient faibles, ce qui a dégradé leur
+portefeuille d'investissement et il a été plus difficile pour les
+assureurs vie d'honorer leurs engagements. Suite à cela, l'économie a
+subi un retournement et un choc inflationniste pendant les années 2021
+et 2022 dû à la reprise économique post-COVID-19 et la crise
+énergétique. Les taux d'intérêt directeurs de la BCE ont rapidement
+augmenté et l'inflation a explosé. Pour les assureurs, la hausse brutale
+des taux a entraîné des pertes latentes sur leur portefeuille
+obligataire, entraînant une baisse des fonds propres et donc une
+dégradation du ratio de solvabilité. Enfin, durant les dernières années
+2023 à 2025, l'économie traverse une période d'instabilité financière et
+géopolitique. Les marchés financiers sont affectés par plusieurs sources
+de volatilité, notamment une crise bancaire et des tensions
+géopolitiques toujours dans un contexte inflationniste et de taux
+d'intérêt élevés. Les portefeuilles des compagnies d'assurance ont perdu
+en valeur et le SCR de marché a augmenté, détériorant les deux
+composants du ratio de solvabilité.
+
+Cette chronologie nous a permis de noter les variables macro-économiques
+qui semblent en grande partie impacter la solvabilité et l'activité des
+assureurs. Ainsi, il a été observé que es taux d'intérêt ont un impact
+sur la valeur des obligations détenues par les assureurs entrainant des
+pertes ou plus-values latentes réduisant la valeur de marché de leurs
+fonds propres. En outre, la rentabilité des portefeuilles obligataires
+des assureurs est affectée. Dans ce contexte, les assureurs doivent
+ajuster la duration de leur portefeuille afin de gérer leur exposition
+au risque de taux. Ces éléments impactent donc le ratio de solvabilité
+des assureurs. L'inflation impacte elle aussi significativement
+l'activité des assureurs, à travers une hausse du coût des sinistres
+pour les assureurs non-vie qui amène les assureurs à ajuster leur
+tarification et réévaluer leurs provisions à la hausse. L'inflation
+conduit alors une baisse de leur résultat technique et leur solvabilité
+est dégradée. Enfin, la volatilité des marchés financiers entraîne une
+baisse potentielle de la valeur des portefeuilles actions des assureurs
+et une augmentation du SCR de marché pour couvrir cette incertitude.
+Cette combinaison réduit les fonds propres et peut dégrader le ratio de
+solvabilité.
+
+\section{Formule du calcul du SCR}\label{formule-du-calcul-du-scr}
+
+\section{Synthèse des rapports de conditions de solvabilité et
+financière des entreprise
+(SFCR)}\label{synthuxe8se-des-rapports-de-conditions-de-solvabilituxe9-et-financiuxe8re-des-entreprise-sfcr}
+
+\section{Statistiques descriptives}\label{statistiques-descriptives}
+
+\subsection{Analyse univariée}\label{analyse-univariuxe9e}
+
+Cette section est consacrée à l'analyse univariée des variables, visant
+à décrire leurs distributions et leurs principales caractéristiques
+statistiques.
+
+\subsubsection{Répartition des compagnies selon leur
+nature}\label{ruxe9partition-des-compagnies-selon-leur-nature}
+
+L'activité d'assurance non-vie concentre la majorité des compagnies du
+marché. À l'inverse, les Fonds de Retraite et de Prévoyance Sociale
+(FRPS) demeurent très faiblement représentés, avec une part limitée à
+\(0,91 \%\). De même, le segment de la réassurance ne regroupe qu'une
+fraction marginale des compagnies d'assurance, soit \(2,56 \%\).
+
+\begin{center}\includegraphics[width=0.6\linewidth]{Stat_desc_files/figure-latex/unnamed-chunk-2-1} \end{center}
+
+\subsubsection{Répartition des compagnies par
+famille}\label{ruxe9partition-des-compagnies-par-famille}
+
+La structure du marché est majoritairement dominée par les organismes
+mutualistes, lesquels représentent \(53,71 \%\) de l'ensemble des
+compagnies. Le solde du marché se répartit de manière relativement
+équilibrée entre les assureurs traditionnels et les bancassureurs.
+
+\begin{center}\includegraphics[width=0.6\linewidth]{Stat_desc_files/figure-latex/unnamed-chunk-3-1} \end{center}
+
+\subsection{Analyse bivarariée}\label{analyse-bivarariuxe9e}
+
+À l'exception du segment de la réassurance, les organismes mutualistes
+apparaissent comme majoritairement représentés dans l'ensemble des
+regroupements par nature d'activité. Leur part relative demeure plus
+élevée que celle des bancassureurs et des assureurs traditionnels, tant
+dans les catégories des prestataires d'assurance non-vie que dans celles
+de l'assurance vie et de la capitalisation. En revanche, le secteur de
+la réassurance est dominé par les assureurs traditionnels, lesquels
+représentent \(71,7\%\) des acteurs recensés. Il convient également de
+souligner que seuls les organismes mutualistes et les assureurs
+traditionnels interviennent dans la fourniture de fonds de retraite et
+de prévoyance sociale (FRSP). Enfin, la répartition des différentes
+familles d'assureurs apparaît globalement équilibrée dans les activités
+mixtes combinant assurance vie et assurance non-vie.
+
+Dans un soucis d'avoir des données de taille comparable entre les
+catégorie mixte, non-vie et vie, nous avons fusionné les catégories
+mixte et vie.
+
+\begin{center}\includegraphics[width=0.6\linewidth]{Stat_desc_files/figure-latex/unnamed-chunk-4-1} \end{center}
+
+\subsection{Analyses trimestrielles}\label{analyses-trimestrielles}
+
+Pour toutes les analyses qui suivent, nous ne prendrons en compte que
+deux natures de sociétés:
+
+\begin{itemize}
+\tightlist
+\item
+  Non Vie;
+\item
+  Vie (regroupant les natures \textbf{Vie/Capitalisation} et
+  \textbf{Mixte}).
+\end{itemize}
+
+La base de données contient 3444 trimestres avec des variables cibles
+déclarées. Nous pouvons donc observer l'évolution moyenne des Fonds
+propres et du ratio de solvabilité avec les données disponibles.
+
+\begin{enumerate}
+\def\labelenumi{(\roman{enumi})}
+\tightlist
+\item
+  \textbf{Ratio de solvabilité}
+\end{enumerate}
+
+\begin{center}\includegraphics[width=0.6\linewidth]{Stat_desc_files/figure-latex/unnamed-chunk-5-1} \end{center}
+
+Le ratio moyen de solvabilité trimestriel apporte plus d'information sur
+les variations qu'ont connues les sociétés d'assurance au cours de
+l'année. On constate donc que le ratio de solvabilité moyen des sociétés
+oscille avec beaucoup plus d'amplitude que les données annuelles ne le
+laissent entrevoir. Le ratio moyen trimestriel des sociétés Non Vie
+varie avec une tendance légèrement baissière entre \textbf{320\(\%\)} et
+\textbf{250\(\%\) }. Il y a également une volatilité qui est
+décroissante dans le temps. Quant au ratio trimestriel moyen des
+sociétés d'assurances Vie, il est globalement plus faible que celui des
+sociétés non vie évoluant entre \textbf{160\(\%\)} et
+\textbf{260\(\%\)}. Entre 2018 et 2020, on remarque une
+désynchronisation très forte entre le ratio moyen annuel et trimestriel
+des sociétés d'assurances vie.
+
+\begin{enumerate}
+\def\labelenumi{(\roman{enumi})}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  \textbf{Fonds Propres}
+\end{enumerate}
+
+\begin{center}\includegraphics[width=0.6\linewidth]{Stat_desc_files/figure-latex/4-1} \end{center}
+
+Les données trimestrielles offrent une vision plus détaillée de
+l'évolution des fonds propres. Ces graphiques montrent que les fonds
+propres des sociétés d'assurance Vie sont plus volatils que ceux des
+sociétés Non‑Vie. Par ailleurs, les fonds propres moyens des sociétés
+Vie et Non‑Vie semblent présenter une légère tendance haussière, ce qui
+suggère que les entreprises de notre échantillon accumulent
+progressivement davantage de fonds propres au fil du temps, malgré
+certaines fluctuations.
+
+Nous observons également un écart important entre les valeurs annuelles
+et trimestrielles, aussi bien pour les sociétés d'assurance Non‑Vie que
+pour les sociétés Vie. Ce biais pourrait provenir de la taille des
+entreprises déclarant des données trimestrielles. En effet, toutes les
+sociétés ne transmettent pas d'informations trimestrielles. Seules 131
+sociétés de la base disposent d'au moins une observation trimestrielle,
+ce qui représente environ 50.38\(\%\) de l'ensemble des sociétés
+recensées.
+
+\begin{center}\includegraphics[width=0.6\linewidth]{Stat_desc_files/figure-latex/Décalage-1} \end{center}
+
+La divergence entre les moyennes annuelles et trimestrielles peut
+s'expliquer par le fait que les sociétés ne déclarant pas de données
+trimestrielles présentent, en moyenne, des niveaux de fonds propres
+annuels plus faibles. Autrement dit, seules les grandes sociétés
+d'assurance transmettent des données trimestrielles, tandis que toutes
+les sociétés --- y compris les plus petites --- déclarent des données
+annuelles. Ces petites sociétés tirent donc la moyenne annuelle globale
+vers le bas, ce qui crée un écart entre les deux séries.
+
+Pour corriger ce biais de sélection présent dans les données
+trimestrielles, nous allons ajuster les séries trimestrielles à partir
+des données annuelles.
+
+\paragraph{Ajustement des valeurs
+trimestrielles}\label{ajustement-des-valeurs-trimestrielles}
+
+L'objectif est d'estimer le montant total de SCR et de fonds propres
+trimestriels que nous aurions obtenu si toutes les sociétés avaient
+transmis des valeurs trimestrielles. Pour cela, pour les sociétés ne
+déclarant que des valeurs annuelles, nous estimerons leurs valeurs
+trimestrielles en nous appuyant sur les comportements observés chez les
+sociétés qui déclarent à la fois des données trimestrielles et
+annuelles.
+
+La méthode d'ajustement repose sur le calcul du taux de croissance moyen
+par nature, obtenu à partir des sociétés qui déclarent à la fois des
+valeurs annuelles et trimestrielles. Ces taux de croissance moyens
+servent ensuite à estimer les valeurs trimestrielles manquantes à partir
+des valeurs annuelles disponibles.
+
+\begin{enumerate}
+\def\labelenumi{(\roman{enumi})}
+\tightlist
+\item
+  Pour le premier trimestre
+\end{enumerate}
+
+Le taux de croissance moyen utilisé pour l'ajsutement correspond au taux
+de croissance entre la somme des valeurs de l'année précédente et la
+somme des valeurs du premier trimestre de l'année suivante.
+
+\begin{description}
+\tightlist
+\item[Supposons que nous souhaitons déterminer le taux de croissance
+moyen du premier trimestre de l'année t. Pour cela, nous considèrons
+l'ensemble E des sociétés ayant déclaré les valeurs de l'année t-1 ainsi
+que celles du premier trimestre de l'année t. Le taux de croissanse se
+calcul donc de la manière suivante :]
+\end{description}
+
+\[ \tau_{moyen_{1,t}} =   \frac{\sum_{j \in E} SCR^j_{T_{1,t}}-\sum_{j \in E} SCR^j_{A_{t-1}} }{\sum_{j \in E}SCR^j_{A_{t-1}}} \]
+où :
+
+\begin{itemize}
+\tightlist
+\item
+  \(SCR^j_{T_{1,t}}\) désigne le SCR de la société j au premier
+  trimestre de l'année t;
+\item
+  \(SCR^j_{A_{t-1}}\) désigne le SCR de la société j de l'année t-1.
+\end{itemize}
+
+Nous faisons l'hypothèse que les sociétés n'ayant pas déclaré le premier
+trimestre de l'année t auraient connu un taux de croissance
+\(\tau _{moyen_{1,t}}\) de leur SCR entre la fin de l'année t‑1 et le
+premier trimestre de l'année t. Nous estimons donc le SCR des sociétés
+n'ayant pas déclaré au premier trimestre de l'année t en multipliant la
+somme de leur SCR de l'année t‑1 par \(1+\tau _{moyen_{1,t}}\). Pour
+estimer le SCR moyen au premier trimestre de l'année t, il suffit alors
+de considérer la somme des SCR des sociétés ayant déclaré, d'y ajouter
+la somme estimée pour celles qui n'ont pas déclaré, puis de diviser
+l'ensemble par le nombre total de sociétés.
+
+\begin{enumerate}
+\def\labelenumi{(\roman{enumi})}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Pour les autres trimestres (T2, T3 et T4)
+\end{enumerate}
+
+Le taux de croissance moyen utilisé pour l'imputation correspond au taux
+de croissance entre la somme des valeurs du trimestre précédent et la
+somme des valeurs du trimestre que l'on souhaite estimer. Les valeurs
+estimer du premier trimestre servent à estimer ceux du deuxième, les
+valeurs de deuxième servent à estimer le troisième et les valeurs du
+troisième servent à estimer ceux du quatrième.
+
+Supposons que nous souhaitons déterminer le taux de croissance moyen du
+trimestre i\(\in \{2,3,4\}\) de l'année t. Pour cela, nous considèrons
+l'ensemble \(E'\) des sociétés ayant déclaré les valeurs aux trimestres
+i-1 et i de l'année t. Le taux de croissanse se calcul donc de la
+manière suivante :
+
+\[ \tau_{moyen_{i,t}} =   \frac{\sum_{j \in E'} SCR^j_{T_{i,t}}-\sum_{j \in E'} SCR^j_{T_{i-1,t}} }{\sum_{j \in E'}SCR^j_{T_{i-1,t}}} \]
+Nous estimons le SCR des sociétés n'ayant pas déclaré au trimestre i de
+l'année t en multipliant l'estimation de leur SCR du trimestre i-1 de
+l'année t par \(1+\tau _{moyen_{i,t}}\). Pour estimer le SCR moyen au
+trimestre i de l'année t, il suffit alors de considérer la somme des SCR
+des sociétés ayant déclaré, d'y ajouter la somme estimée pour celles qui
+n'ont pas déclaré, puis de diviser l'ensemble par le nombre total de
+sociétés.
+
+\subsubsection{Visualisation de
+l'ajustement}\label{visualisation-de-lajustement}
+
+\begin{center}\includegraphics[width=0.6\linewidth]{Stat_desc_files/figure-latex/8-1} \end{center}
+
+Après ajustement, on observe que les données trimestrielles s'alignent
+désormais mieux avec les données annuelles, ce qui confirme la
+correction du biais initialement identifié.
+
+\section{Modélisation}\label{moduxe9lisation}
+
+La complexité des interactions entre les variables macro-financières et
+la solvabilité des assureurs nécessite une approche empirique
+séquentielle. Notre stratégie de modélisation s'articule autour de trois
+axes complémentaires :
+
+\begin{enumerate}
+  \item \textbf{}Modèle en données de panel : Cette première modélisation vise à analyser la dynamique globale des indicateurs de solvabilité tout en tenant compte de l'hétérogénéité individuelle des assureurs.
+  \item \textbf{}Régressions en différence simple : Nous effectuons une régression MCO des différences logarithmiques en ne retenant que la dimension temporelle afin d'évaluer la dynamique de court terme.
+  \item \textbf{}Modèle ARDL (Auto Regressive Distributed Lag) : Il permet d'intégrer simultanément des relations de court terme et d'éventuelles relations de long terme (cointégration) qui ne peuvent pas être captées par les modèles de régression simple.
+\end{enumerate}
+
+\subsection{I - Modèle de données de
+panel}\label{i---moduxe8le-de-donnuxe9es-de-panel}
+
+\subsection{II - Régressions en
+différence}\label{ii---ruxe9gressions-en-diffuxe9rence}
+
+Les régressions en différence constituent étape d'analyse des liens de
+court terme entre les variables macro-financières et les indicateurs de
+solvabilité. Cette approche permet d'étudier la transmission immédiate
+des chocs macro-financiers tout en intégrant une dynamique
+autorégressive et d'éventuels effets retardés. Nous utilisons des
+modèles de régression linéaire estimés par les Moindres Carrés
+Ordinaires. La spécification générale du modèle est la suivante :
+
+\begin{equation}
+\Delta Y_t = \alpha + \sum_{i=1}^{n} \beta_i \Delta X_{i, t-k} + \rho \Delta Y_{t-1} + \epsilon_t
+\end{equation}
+
+Où :
+
+\begin{itemize}
+    \item $\Delta Y_t$ représente le taux de croissance de l'indicateur de solvabilité étudié (Ratio, Fonds Propres ou SCR) au temps $t$.
+    \item $\alpha$ est la constante du modèle (ou drift).
+    \item $\Delta X_{i, t-k}$ représente la variation de la $i$-ème variable explicative (Indices boursiers, IPC, Taux, PIB) avec un retard $k \geq 0$.
+    \item $\rho$ est le coefficient associé au terme autorégressif, captant l'inertie de la variable expliquée.
+    \item $\epsilon_t$ est le terme d'erreur (bruit blanc) $\epsilon_t \sim N(0, \sigma^2)$.
+\end{itemize}
+
+Ce modèle repose sur les hypothèses classiques des MCO : linéarité de la
+relation, exogénéité des régresseurs, homoscédasticité et absence
+d'autocorrélation des résidus, et normalité de la distribution des
+erreurs. Ces hypothèses sont vérifiées empiriquement en fin de partie à
+l'aide des tests appropriés.
+
+\subsubsection{1) Agrégation et transformation des
+données}\label{agruxe9gation-et-transformation-des-donnuxe9es}
+
+Dans le cadre de cette modélisation, les données individuelles des
+assureurs et les variables macro-financières ont été agrégées par
+trimestre afin de ne conserver qu'une dimension temporelle. Cette
+agrégation permet d'obtenir une série synthétique reflétant l'évolution
+globale du secteur et de s'aligner sur les dates de reporting
+réglementaires du secteur. Ce choix méthodologique implique dans un
+premier temps de renoncer à l'analyse des effets individuels mais il est
+cohérent avec l'objectif de l'étude, centré sur la dynamique
+macroéconomique de la solvabilité.
+
+Nous modéliserons les fonds propres, le SCR et le ratio de solvabilité
+des assureurs. Nous avons retenu les variables explicatives suivantes
+(valeurs trimestrielles) : les indices boursiers S\&P 500 et Euro Stoxx
+50, les taux d'intérêt de court et long terme, l'indice des prix à la
+consommation en France (IPC) et le Produit Intérieur Brut français.
+
+Pour chaque indice boursier (S\&P 500, EURO STOXX 50, DAX, CAC 40), nous
+effectuons deux transformations majeures pour assurer la pertinence de
+l'analyse :
+
+\begin{itemize}
+  \item \textbf{Agrégation trimestrielle} : Afin de faire correspondre les données boursières aux dates de remise des rapports de solvabilité, nous retenons la dernière valeur de clôture enregistrée pour chaque trimestre.
+  \item \textbf{Calcul des rendements logarithmiques} : Nous utilisons la formule $r_t = \ln(P_t) - \ln(P_{t-1})$. Les log-rendements sont préférés car ils permettent de traiter des séries temporelles stationnaires et facilitent la comparaison entre indices de niveaux de prix différents.
+\end{itemize}
+
+\subsubsection{2) Spécification des variables et
+stationnarité}\label{spuxe9cification-des-variables-et-stationnarituxe9}
+
+Nous avons également enrichi nos données en calculant les différences
+logarithmiques des variables qui seront utilisées dans la régression en
+différence. Cette transformation permet de rendre les séries
+stationnaires et d'interpréter les variations comme des taux de
+croissance. Les taux d'intérêt sont quant à eux exprimés en différences
+premières, correspondant à des variations en niveau.
+
+L'ensemble des variables sont transformées en différences logarithmiques
+selon \(\Delta\ln(X_t) = \ln(X_t) - \ln(X_{t-1})\), à l'exception des
+taux d'intérêt exprimés en différences premières
+\(\Delta X_t = X_t - X_{t-1}\), ces derniers pouvant prendre des valeurs
+négatives incompatibles avec le logarithme.
+
+Afin de pouvoir mener des régressions robustes, il est nécessaire que
+l'ensemble de nos séries utilisées soient stationnaires. La
+stationnarité des séries transformées a été vérifiée à l'aide des tests
+de Dickey-Fuller augmenté (ADF) et KPSS. Le test ADF repose ici sur
+l'observation de la p-value associée au test :
+
+\begin{itemize}
+    \item $H_0$ : La série possède une racine unitaire (non-stationnaire)
+    \item $H_1$  : La série est stationnaire
+\end{itemize}
+
+Si \(t_{stat}\) \textless{} \(t_{crit}\) : On rejette \emph{H0} au seuil
+de significativité choisi.
+
+Les hypothèses du test KPSS sont les suivantes :
+
+\begin{itemize}
+  \item $H_0$ : La série est stationnaire
+  \item $H_1$ : La série est non stationnaire
+\end{itemize}
+
+Si \(t_{stat}\) \textgreater{} \(t_{crit}\) : On rejette \emph{H0} au
+seuil de significativité choisi.
+
+Ainsi, les tests ADF et KPSS appliqués aux séries transformées
+confirment leur stationnarité validant les conditions d'application du
+modèle de régression linéaire Moindres Carrés Ordinaires.
+
+\subsubsection{3) Test de Causalité de
+Granger}\label{test-de-causalituxe9-de-granger}
+
+Des tests de causalité au sens de Granger ont été réalisés afin
+d'identifier les retards pertinents des variables macro-financières dans
+les modèles dynamiques. Les tests ont été conduits sur des horizons
+allant de un à quatre trimestres afin de capturer d'éventuels délais de
+transmission. L'hypothèse nulle du test est la suivante :
+
+\emph{H0} : les coefficients associés aux valeurs retardées de la
+variable explicative sont conjointement nuls.
+
+Pour les assureurs Vie, les résultats mettent en évidence un pouvoir
+prédictif significatif des taux longs (retard 1), de l'IPC (retard 4) et
+du S\&P500 (retards 2) sur les fonds propres. L'IPC (retard 4) a un
+effet prédictif significatif sur le SCR et le S\&P500 (retard 3) sur le
+ratio. Pour les assureurs Non-Vie, seules quelques relations prédictives
+limitées apparaissent, principalement entre l'IPC (retard 3) et les
+fonds propres ainsi qu'entre les taux longs (retard 1) et le ratio de
+solvabilité.
+
+\subsubsection{4) Estimation du modèle}\label{estimation-du-moduxe8le}
+
+Afin d'éviter les problèmes de multicolinéarité entre indices boursiers
+fortement corrélés, nous avons retenu uniquement le S\&P 500 et l'Euro
+Stoxx. Ce choix permet de conserver une représentation pertinente des
+dynamiques des marchés, en combinant un indice global et un indice
+européen ce qui est cohérent avec l'exposition des assureurs étudiés.
+
+\paragraph{\texorpdfstring{4.1) Spécifications\\
+}{4.1) Spécifications }}\label{spuxe9cifications}
+
+\hfill\break
+Des spécifications contemporaines ont d'abord été estimées par MCO
+(cf.~Annexe Table). Malgré des diagnostics résiduels satisfaisants, les
+coefficients apparaissaient majoritairement non significatifs, suggérant
+l'existence de mécanismes de transmission retardés. Les modèles
+dynamiques finaux ont donc été construits en deux étapes : les tests de
+causalité de Granger ont d'abord permis d'identifier les retards
+pertinents puis les spécifications ont été comparées via les critères
+AIC et BIC afin d'assurer un équilibre entre robustesse statistique et
+interprétation économique.
+
+Les résultats mettent en évidence des mécanismes de transmission
+différenciés entre branches Vie et Non-Vie ce qui est cohérent avec
+leurs structures d'activité respectives.
+
+Les écarts-types des coefficients sont corrigés à l'aide de l'estimateur
+robuste de Newey-West afin de tenir compte d'une éventuelle
+hétéroscédasticité et autocorrélation des résidus. Bien que les tests de
+Breusch-Pagan et Ljung-Box ne rejettent pas formellement
+l'homoscédasticité et l'absence d'autocorrélation, la sensibilité des
+p-values à cette correction suggère la présence de déviations non
+détectées par ces tests sur petit échantillon, justifiant une approche
+robuste par précaution.
+
+\subparagraph{4.2.1) Assureurs Vie}\label{assureurs-vie}
+
+\subparagraph{Fonds propres - Vie}\label{fonds-propres---vie}
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{FP}_t) = \alpha & + \rho \Delta \ln(\text{FP}_{t-1})
+& + \beta_1 \Delta \text{TauxL}_{t-1}
+& + \beta_2 \Delta \ln(\text{IPC})_{t-4}
+& + \beta_3 \Delta \ln(\text{S\&P500})_{t-2} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+\begin{table}[H]
+\centering\centering
+\caption{\label{tab:unnamed-chunk-22}Analyse dynamique des Fonds Propres - Branche Vie}
+\centering
+\begin{tabular}[t]{lccc}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{3}{c}{Fonds Propres (Vie)} \\
+\cmidrule(l{3pt}r{3pt}){2-4}
+  & Est. & t & p\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{\num{0.0352}} & \cellcolor{gray!10}{\num{1.4257}} & \cellcolor{gray!10}{\num{0.1650}}\\
+dplyr = lag(diff\_fonds\_propres, 1) & \num{-0.5197}* & \num{-2.6712} & \num{0.0124}\\
+\cellcolor{gray!10}{dplyr = lag(diff\_taux\_long, 1)} & \cellcolor{gray!10}{\num{-0.0901}**} & \cellcolor{gray!10}{\num{-3.1146}} & \cellcolor{gray!10}{\num{0.0042}}\\
+dplyr = lag(rendement\_sp500, 2) & \num{0.3673}** & \num{3.0802} & \num{0.0046}\\
+\cellcolor{gray!10}{dplyr = lag(diff\_ipc, 4)} & \cellcolor{gray!10}{\num{-4.4542}*} & \cellcolor{gray!10}{\num{-2.5296}} & \cellcolor{gray!10}{\num{0.0173}}\\
+\midrule
+Num.Obs. & \num{33} &  & \\
+\cellcolor{gray!10}{R2} & \cellcolor{gray!10}{\num{0.390}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+R2 Adj. & \num{0.303} &  & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+L'ensemble des coefficients sont significatifs au seuil de 5\% après
+correction des écarts-types par la méthode de Newey-West. Les résidus ne
+présentent pas d'autocorrélation selon le test de Ljung-Box, le modèle
+semble donc robuste. Les résultats mettent en évidence une forte
+sensibilité des fonds propres des assureurs Vie aux conditions
+macro-financières. La hausse des taux d'intérêt de long terme exerce un
+effet négatif sur la croissance des fonds propres traduisant
+probablement la baisse de la valeur de marché des portefeuilles
+obligataires lors des phases de remontée des taux. À l'inverse, les
+performances des marchés actions internationaux, approximées par le S\&P
+500, soutiennent positivement l'évolution des fonds propres avec un
+décalage de deux trimestres confirmant l'exposition importante des
+assureurs Vie aux marchés financiers. L'inflation apparaît également
+comme un facteur défavorable à la solvabilité avec un effet retardé de
+quatre trimestres. Ce résultat peut refléter l'augmentation progressive
+des coûts de gestion et le délai d'ajustement des primes. Enfin, la
+significativité du terme autorégressif souligne l'existence d'une
+dynamique de persistance des fonds propres, les chocs observés tendent à
+se diffuser progressivement dans le temps.
+
+\subparagraph{SCR - Vie}\label{scr---vie}
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{SCR}_t) = \alpha & + \rho \Delta \ln(\text{SCR}_{t-1}) 
+& + \beta_1 \Delta \text{TauxL}_{t-1} 
+& + \beta_2 \Delta \ln(\text{IPC})_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+\begin{table}[H]
+\centering\centering
+\caption{\label{tab:unnamed-chunk-23}Analyse dynamique du SCR - Branche Vie}
+\centering
+\begin{tabular}[t]{lccc}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{3}{c}{SCR (Vie)} \\
+\cmidrule(l{3pt}r{3pt}){2-4}
+  & Est. & t & p\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{\num{0.0388}**} & \cellcolor{gray!10}{\num{2.9627}} & \cellcolor{gray!10}{\num{0.0058}}\\
+dplyr = lag(diff\_scr, 1) & \num{-0.4102}** & \num{-2.7535} & \num{0.0098}\\
+\cellcolor{gray!10}{dplyr = lag(diff\_taux\_long, 1)} & \cellcolor{gray!10}{\num{-0.0873}**} & \cellcolor{gray!10}{\num{-2.9415}} & \cellcolor{gray!10}{\num{0.0061}}\\
+dplyr = lag(diff\_ipc, 3) & \num{-4.0140}** & \num{-3.3197} & \num{0.0023}\\
+\midrule
+\cellcolor{gray!10}{Num.Obs.} & \cellcolor{gray!10}{\num{35}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+R2 & \num{0.352} &  & \\
+\cellcolor{gray!10}{R2 Adj.} & \cellcolor{gray!10}{\num{0.289}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les résultats montrent que le SCR des assureurs Vie présente une
+dynamique de rappel importante comme l'indique la significativité du
+terme autorégressif. Les ajustements du besoin en capitals sont donc
+progressifs et les chocs observés sur le SCR tendant à se résorber
+partiellement au trimestre suivant. Les taux d'intérêt de long terme et
+l'inflation exercent tous deux un effet négatif sur la croissance du
+SCR. Ces résultats apparaissent cohérents dans la mesure où ces deux
+variables influencent les mécanismes d'actualisation des engagements des
+assureurs. Dans un contexte de hausse des taux, souvent associé à des
+tensions inflationnistes, la valeur actuelle des passifs futurs diminue,
+ce qui contribue à alléger les exigences réglementaires en capital.
+L'effet retardé de l'IPC suggère toutefois que cette transmission
+s'opère progressivement dans le bilan des assureurs Vie. Par ailleurs,
+la constante positive et significative indique l'existence d'une
+croissance résiduelle du SCR non entièrement expliquée par les variables
+macro-financières intégrées au modèle.
+
+\subparagraph{Ratio de solvabilité -
+Vie}\label{ratio-de-solvabilituxe9---vie}
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{Ratio\_Moyen}_t) = \alpha & + \rho \Delta \ln(\text{Ratio\_Moyen}_{t-1})
+& + \beta_1 \Delta \ln(\text{S\&P500})_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+\begin{table}[H]
+\centering\centering
+\caption{\label{tab:unnamed-chunk-24}Analyse dynamique du ratio de solvabilité - Branche Vie}
+\centering
+\begin{tabular}[t]{lccc}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{3}{c}{Ratio (Vie)} \\
+\cmidrule(l{3pt}r{3pt}){2-4}
+  & Est. & t & p\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{\num{-0.0130}} & \cellcolor{gray!10}{\num{-1.3896}} & \cellcolor{gray!10}{\num{0.1742}}\\
+dplyr = lag(diff\_ratio, 1) & \num{-0.4683}*** & \num{-4.3912} & \num{0.0001}\\
+\cellcolor{gray!10}{dplyr = lag(rendement\_sp500, 3)} & \cellcolor{gray!10}{\num{0.2843}+} & \cellcolor{gray!10}{\num{1.7086}} & \cellcolor{gray!10}{\num{0.0972}}\\
+\midrule
+Num.Obs. & \num{35} &  & \\
+\cellcolor{gray!10}{R2} & \cellcolor{gray!10}{\num{0.307}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+R2 Adj. & \num{0.263} &  & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La dynamique du ratio de solvabilité semble principalement expliquée par
+son propre terme retardé dont le coefficient négatif traduit un
+mécanisme de retour à la moyenne dans l'ajustement de la solvabilité des
+assureurs Vie. Le rendement du S\&P500 exerce un effet positif modéré
+sur le ratio de solvabilité avec un retard de trois trimestres,
+suggérant qu'un environnement boursier favorable améliore
+progressivement la solvabilité des assureurs Vie à travers la
+valorisation des actifs financiers et de meilleures conditions de
+rendement des placements. L'absence d'effet significatif sur le SCR
+suggère que cette amélioration des fonds propres ne semble pas être
+entièrement compensée par une hausse des exigences en capital. À
+l'inverse, les variables de taux d'intérêt et d'inflation n'apparaissent
+plus comme des déterminants robustes des variations du ratio de
+solvabilité probablement en raison d'effets compensatoires entre fonds
+propres et SCR. Par ailleurs, la constante n'apparaît plus
+significative, il ne semble pas y avoir de croissance structurelle du
+ratio non expliquée par les variables macro-financières et la dynamique
+de rappel.
+
+\paragraph{\texorpdfstring{4.2.2) Assureurs Non-Vie\\
+}{4.2.2) Assureurs Non-Vie }}\label{assureurs-non-vie}
+
+\hfill\break
+Nous adoptons la même démarche pour les assureurs Non-Vie malgré
+l'absence de résultats forts aux tests de Granger.
+
+\paragraph{Fonds Propres - Non-Vie}\label{fonds-propres---non-vie}
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{FP}_t) = \alpha & + \rho \Delta \ln(\text{FP}_{t-1}) 
+& + \beta_1 \Delta \ln(\text{IPC})_{t-3}
+& + \beta_2 \Delta \text{TauxC}_{t-3}
+& + \beta_3 \Delta \text{TauxL}_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+\begin{table}[H]
+\centering\centering
+\caption{\label{tab:unnamed-chunk-25}Analyse dynamique des Fonds Propres - Branche Non-Vie}
+\centering
+\begin{tabular}[t]{lccc}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{3}{c}{Fonds Propres (Non-Vie)} \\
+\cmidrule(l{3pt}r{3pt}){2-4}
+  & Est. & t & p\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{\num{0.0367}**} & \cellcolor{gray!10}{\num{3.5278}} & \cellcolor{gray!10}{\num{0.0014}}\\
+dplyr = lag(diff\_fonds\_propres, 1) & \num{-0.4123}*** & \num{-4.9547} & \num{<1e-04}\\
+\cellcolor{gray!10}{dplyr = lag(diff\_ipc, 3)} & \cellcolor{gray!10}{\num{-4.1880}*} & \cellcolor{gray!10}{\num{-2.3698}} & \cellcolor{gray!10}{\num{0.0244}}\\
+dplyr = lag(diff\_taux\_court, 3) & \num{-0.0332} & \num{-1.4900} & \num{0.1467}\\
+\cellcolor{gray!10}{dplyr = lag(diff\_taux\_long, 3)} & \cellcolor{gray!10}{\num{0.0762}*} & \cellcolor{gray!10}{\num{2.1063}} & \cellcolor{gray!10}{\num{0.0436}}\\
+\midrule
+Num.Obs. & \num{35} &  & \\
+\cellcolor{gray!10}{R2} & \cellcolor{gray!10}{\num{0.366}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+R2 Adj. & \num{0.281} &  & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les assureurs non-vie semblent davantage déconnectés des taux et des
+marchés financiers que les assureurs Vie. La dynamique de leurs fonds
+propres parait essentiellement dictée par sa propre inertie. Cependant,
+la constante est significative indiquant une croissance structurelle
+indépendante des fluctuations macro-financières. Cette dynamique suggère
+que la richesse nette de cette branche repose principalement sur le
+cycle d'exploitation (primes et sinistres) plutôt que sur le cycle
+financier.
+
+\paragraph{SCR - Non-Vie}\label{scr---non-vie}
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{SCR}_t) = \alpha & + \rho \Delta \ln(\text{SCR}_{t-1})
+& + \beta_1 \Delta \text{TauxC}_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+\begin{table}[H]
+\centering\centering
+\caption{\label{tab:unnamed-chunk-26}Analyse dynamique du SCR - Branche Non-Vie}
+\centering
+\begin{tabular}[t]{lccc}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{3}{c}{SCR (Non-Vie)} \\
+\cmidrule(l{3pt}r{3pt}){2-4}
+  & Est. & t & p\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{\num{0.0177}*} & \cellcolor{gray!10}{\num{2.2132}} & \cellcolor{gray!10}{\num{0.0341}}\\
+dplyr = lag(diff\_scr, 1) & \num{-0.3273}*** & \num{-4.2606} & \num{0.0002}\\
+\cellcolor{gray!10}{dplyr = lag(diff\_taux\_court, 3)} & \cellcolor{gray!10}{\num{-0.0233}**} & \cellcolor{gray!10}{\num{-3.0898}} & \cellcolor{gray!10}{\num{0.0041}}\\
+\midrule
+Num.Obs. & \num{35} &  & \\
+\cellcolor{gray!10}{R2} & \cellcolor{gray!10}{\num{0.154}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+R2 Adj. & \num{0.101} &  & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les résultats montrent également qu'une hausse des taux d'intérêt de
+court terme réduit la croissance du SCR avec un retard de trois
+trimestres. Ce résultat suggère une transmission différée des conditions
+de taux aux exigences réglementaires en capital, possiblement via les
+mécanismes d'actualisation des engagements et l'évolution de
+l'exposition au risque de taux. La constante positive suggère une
+dynamique de croissance structurelle interne peu sensible aux chocs
+macro-financiers immédiats.
+
+\subsubsection{Ratio de solvabilité -
+Non-Vie}\label{ratio-de-solvabilituxe9---non-vie}
+
+\begin{equation}
+\begin{aligned}
+\Delta \ln(\text{Ratio\_Moyen}_t) = \alpha & + \rho \Delta \ln(\text{Ratio\_Moyen}_{t-1})
+& + \beta_1 \Delta \text{TauxL}_{t-3} & + \beta_2 \Delta \text{TauxC}_{t-3} + \epsilon_t
+\end{aligned}
+\end{equation}
+
+\begin{table}[H]
+\centering\centering
+\caption{\label{tab:unnamed-chunk-27}Analyse dynamique du ratio de solvabilité - Branche Non-Vie}
+\centering
+\begin{tabular}[t]{lccc}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{3}{c}{Ratio (Non-Vie)} \\
+\cmidrule(l{3pt}r{3pt}){2-4}
+  & Est. & t & p\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{\num{-0.0046}+} & \cellcolor{gray!10}{\num{-1.7371}} & \cellcolor{gray!10}{\num{0.0923}}\\
+dplyr = lag(diff\_ratio, 1) & \num{-0.3611}*** & \num{-8.8205} & \num{<1e-04}\\
+\cellcolor{gray!10}{dplyr = lag(diff\_taux\_court, 3)} & \cellcolor{gray!10}{\num{-0.0273}***} & \cellcolor{gray!10}{\num{-6.4019}} & \cellcolor{gray!10}{\num{<1e-04}}\\
+dplyr = lag(diff\_taux\_long, 3) & \num{0.0407}** & \num{3.1076} & \num{0.0040}\\
+\midrule
+\cellcolor{gray!10}{Num.Obs.} & \cellcolor{gray!10}{\num{35}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+R2 & \num{0.253} &  & \\
+\cellcolor{gray!10}{R2 Adj.} & \cellcolor{gray!10}{\num{0.180}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Une hausse des taux d'intérêt de long terme améliore le ratio de
+solvabilité avec un retard de trois trimestres, probablement via
+l'augmentation des fonds propres et l'amélioration des revenus
+financiers. À l'inverse, les taux courts exercent un effet négatif sur
+le ratio de solvabilité. Ce résultat suggère qu'un relèvement des taux
+courts peut temporairement détériorer l'équilibre prudentiel des
+assureurs Non-Vie.
+
+\subsubsection{5) Diagnostics et limites du
+modèle}\label{diagnostics-et-limites-du-moduxe8le}
+
+Ces résultats doivent être interprétés avec prudence en raison de
+plusieurs limites économétriques. La taille réduite de l'échantillon
+restreint la puissance statistique des estimations. L'ensemble des
+modèles estimés satisfont les conditions de validité économétrique : les
+tests de Jarque-Bera, Breusch-Pagan et Ljung-Box ne rejettent pas la
+normalité des résidus, l'homoscédasticité et l'absence d'autocorrélation
+(cf.~Annexe Tables). Néanmoins, compte tenu de la faible puissance de
+ces tests sur petit échantillon et de la sensibilité des p-values à la
+correction, l'estimateur de Newey-West a été appliqué à l'ensemble des
+modèles afin de garantir la robustesse des inférences. Par ailleurs, un
+biais d'endogénéité lié à l'omission de variables pertinentes ne peut
+être exclu. Les variables macro-financières retenues sont susceptibles
+d'être corrélées avec d'autres déterminants de la solvabilité non
+intégrés au modèle ce qui limite la validité de cette modélisation.
+
+Par ailleurs, cette approche en différences ne permet pas d'identifier
+les relations d'équilibre de long terme. Ces éléments justifient le
+recours à une spécification ARDL qui permet d'intégrer simultanément
+dynamiques de court terme et relations de cointégration éventuelles.
+
+\section{Conclusion}\label{conclusion}
+
+\section{Annexes}\label{annexes}
+
+\subsubsection{Analyse descriptive}\label{analyse-descriptive}
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-28-1} \end{flushleft}
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-30-1} \end{flushleft}
+
+\subsubsection{Les indices boursiers.}\label{les-indices-boursiers.}
+
+Les indices boursiers reflètent la performance globale des actions. Une
+baisse de ces indices entraîne une diminution de la valeur des actifs en
+actions détenus par les assureurs, ce qui se traduit par une
+augmentation du SCR actions et une réduction du ratio de solvabilité.
+Dans cette étude, deux indices boursiers sont considérés: l'EURO STOXX
+et le CAC 40.
+
+\paragraph{L'EURO STOXX 50}\label{leuro-stoxx-50}
+
+L'\emph{EURO STOXX 50} est un indice boursier regroupant les 50
+principales sociétés cotées de la zone euro, sélectionnées
+principalement en fonction de leur capitalisation boursière flottante.
+Il constitue un indicateur de la santé économique et des performances
+des marchés financiers au sein de la zone euro. Le graphique présenté
+ci-dessous illustre l'évolution des valeurs maximales et minimales de
+cet indice deouis \(2015\) jusqu'en \(2025\).
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-34-1} \end{flushleft}
+
+Ces indices évoluent de manière globalement parallèle, suivant une
+tendance générale à la hausse. Néanmoins, une chute marquée est observée
+en mars 2020, atteignant un niveau minimal, en raison des mesures de
+restriction et de l'incertitude économique engendrées par la pandémie de
+COVID-19. C'est en effet en cette période que Donald Trump avait annoncé
+la restriction des entrées sur le téritoire américain; source d'une
+panique boursière.
+
+\paragraph{Le Standard \& Poor's 500 (S\&P
+500)}\label{le-standard-poors-500-sp-500}
+
+Le S\&P 500 est un indice boursier large représentant les 500 plus
+grandes sociétés cotées aux États-Unis, pondérées en fonction de leur
+capitalisation boursière flottante. Il est largement utilisé comme
+référence du marché actions américain et constitue un indicateur clé de
+la performance économique et financière du pays. L'évolution des valeurs
+maximales et minimales de cet indice entre 2015 et 2025, présentée dans
+le graphique ci-dessous, permet d'analyser la volatilité du marché ainsi
+que l'impact des événements macroéconomiques et géopolitiques sur les
+marchés financiers américains
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-35-1} \end{flushleft}
+
+Le S\&P 500 connaît une tendence croissance sur toute la période avec
+également une pertubation en mars 2020 due à la pandémie de OVID-19.
+Toutefois cette indice est visiblement moins volatile que l'EURO STOXX
+50.
+
+\paragraph{L'indice CAC 40}\label{lindice-cac-40}
+
+~
+
+L'indice \emph{CAC 40} constitue le principal indice boursier de la
+Bourse de Paris, reflétant la performance des 40 actions les plus
+importantes et les plus activement négociées sur Euronext Paris. Le
+graphique ci-après illustre l'évolution de ses valeurs maximales et
+minimales au fil du temps.
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-38-1} \end{flushleft}
+
+Comme pour l'EURO STOXX, les valeurs de l'indice CAC 40 évoluent de
+manière parallèle et croissante avec également une chutte marqué en mars
+2020 pour la même raison que précédemment.
+
+\paragraph{L'indice DAX}\label{lindice-dax}
+
+Le DAX (Deutscher Aktienindex) est l'indice de référence du marché
+boursier allemand, regroupant les 40 principales sociétés cotées à la
+Bourse de Francfort, sélectionnées principalement en fonction de leur
+capitalisation boursière flottante. C'est l'équivalent allemend du CAC
+40. Le graphique ci-après représente les variation de cet indice sur la
+période \(2015-2025.\)
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-39-1} \end{flushleft}
+
+\section{Modélisation}\label{moduxe9lisation-1}
+
+\section{II - Régression en
+différence}\label{ii---ruxe9gression-en-diffuxe9rence}
+
+\begin{table}[H]
+\centering\centering
+\caption{\label{tab:unnamed-chunk-40}Résultats de la régression du ratio de solvabilité - Vie}
+\centering
+\begin{tabular}[t]{lcccc}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{4}{c}{(1)} \\
+\cmidrule(l{3pt}r{3pt}){2-5}
+  & Est. & S.E. & t & p\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{\num{-0.0158}} & \cellcolor{gray!10}{\num{0.0205}} & \cellcolor{gray!10}{\num{-0.7704}} & \cellcolor{gray!10}{\num{0.4475}}\\
+rendement\_stoxx & \num{0.1268} & \num{0.2570} & \num{0.4936} & \num{0.6255}\\
+\cellcolor{gray!10}{rendement\_sp500} & \cellcolor{gray!10}{\num{0.2066}} & \cellcolor{gray!10}{\num{0.2412}} & \cellcolor{gray!10}{\num{0.8566}} & \cellcolor{gray!10}{\num{0.3989}}\\
+diff\_ipc & \num{0.6865} & \num{2.6065} & \num{0.2634} & \num{0.7942}\\
+\cellcolor{gray!10}{diff\_taux\_court} & \cellcolor{gray!10}{\num{-0.0432}} & \cellcolor{gray!10}{\num{0.0382}} & \cellcolor{gray!10}{\num{-1.1325}} & \cellcolor{gray!10}{\num{0.2670}}\\
+diff\_taux\_long & \num{0.0599} & \num{0.0455} & \num{1.3172} & \num{0.1984}\\
+\cellcolor{gray!10}{diff\_pib} & \cellcolor{gray!10}{\num{0.2577}} & \cellcolor{gray!10}{\num{0.4199}} & \cellcolor{gray!10}{\num{0.6138}} & \cellcolor{gray!10}{\num{0.5443}}\\
+\midrule
+Num.Obs. & \num{35} &  &  & \\
+\cellcolor{gray!10}{R2} & \cellcolor{gray!10}{\num{0.176}} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{} & \cellcolor{gray!10}{}\\
+R2 Adj. & \num{-0.000} &  &  & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{longtable}[t]{llrrl}
+\caption{\label{tab:unnamed-chunk-41}Tests sur les résidus modèle ratio - Vie}\\
+\toprule
+ & Test & Statistique & P\_value & Verdict\\
+\midrule
+\cellcolor{gray!10}{DW} & \cellcolor{gray!10}{Autocorrélation (Durbin-Watson)} & \cellcolor{gray!10}{2.6972} & \cellcolor{gray!10}{0.9789} & \cellcolor{gray!10}{Hypothèse validée}\\
+X-squared & Indépendance Globale (Ljung-Box) & 17.6091 & 0.0619 & Bruit blanc confirmé\\
+\cellcolor{gray!10}{BP} & \cellcolor{gray!10}{Homoscédasticité (Breusch-Pagan)} & \cellcolor{gray!10}{4.5900} & \cellcolor{gray!10}{0.5974} & \cellcolor{gray!10}{Hypothèse validée}\\
+W & Normalité (Shapiro-Wilk) & 0.9649 & 0.3184 & Hypothèse validée\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{lrrl}
+\caption{\label{tab:unnamed-chunk-42}Tests diagnostiques - Fonds Propres Vie}\\
+\toprule
+Test & Statistique & p.value & Hypothèse\_nulle\\
+\midrule
+\cellcolor{gray!10}{Ljung-Box} & \cellcolor{gray!10}{0.0971} & \cellcolor{gray!10}{0.7554} & \cellcolor{gray!10}{Pas d'autocorrélation}\\
+Jarque-Bera & 0.1760 & 0.9158 & Normalité des résidus\\
+\cellcolor{gray!10}{Breusch-Pagan} & \cellcolor{gray!10}{1.7255} & \cellcolor{gray!10}{0.7861} & \cellcolor{gray!10}{Homoscédasticité}\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{llr}
+\caption{\label{tab:unnamed-chunk-42}Facteurs d'inflation de la variance (VIF) - Fonds Propres Vie}\\
+\toprule
+ & Variable & VIF\\
+\midrule
+\cellcolor{gray!10}{dplyr::lag(diff\_fonds\_propres, 1)} & \cellcolor{gray!10}{dplyr::lag(diff\_fonds\_propres, 1)} & \cellcolor{gray!10}{1.309}\\
+dplyr::lag(diff\_taux\_long, 1) & dplyr::lag(diff\_taux\_long, 1) & 1.051\\
+\cellcolor{gray!10}{dplyr::lag(rendement\_sp500, 2)} & \cellcolor{gray!10}{dplyr::lag(rendement\_sp500, 2)} & \cellcolor{gray!10}{1.068}\\
+dplyr::lag(diff\_ipc, 4) & dplyr::lag(diff\_ipc, 4) & 1.281\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{lrrl}
+\caption{\label{tab:unnamed-chunk-43}Tests diagnostiques - SCR Vie}\\
+\toprule
+Test & Statistique & p.value & Hypothèse\_nulle\\
+\midrule
+\cellcolor{gray!10}{Ljung-Box} & \cellcolor{gray!10}{0.0971} & \cellcolor{gray!10}{0.7554} & \cellcolor{gray!10}{Pas d'autocorrélation}\\
+Jarque-Bera & 0.1760 & 0.9158 & Normalité des résidus\\
+\cellcolor{gray!10}{Breusch-Pagan} & \cellcolor{gray!10}{1.7255} & \cellcolor{gray!10}{0.7861} & \cellcolor{gray!10}{Homoscédasticité}\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{llr}
+\caption{\label{tab:unnamed-chunk-43}Facteurs d'inflation de la variance (VIF) - SCR Vie}\\
+\toprule
+ & Variable & VIF\\
+\midrule
+\cellcolor{gray!10}{dplyr::lag(diff\_scr, 1)} & \cellcolor{gray!10}{dplyr::lag(diff\_scr, 1)} & \cellcolor{gray!10}{1.054}\\
+dplyr::lag(diff\_taux\_long, 1) & dplyr::lag(diff\_taux\_long, 1) & 1.212\\
+\cellcolor{gray!10}{dplyr::lag(diff\_ipc, 3)} & \cellcolor{gray!10}{dplyr::lag(diff\_ipc, 3)} & \cellcolor{gray!10}{1.243}\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{lrrl}
+\caption{\label{tab:unnamed-chunk-44}Tests diagnostiques - Ratio de solvabilité Vie}\\
+\toprule
+Test & Statistique & p.value & Hypothèse\_nulle\\
+\midrule
+\cellcolor{gray!10}{Ljung-Box} & \cellcolor{gray!10}{0.6204} & \cellcolor{gray!10}{0.4309} & \cellcolor{gray!10}{Pas d'autocorrélation}\\
+Jarque-Bera & 4.2546 & 0.1192 & Normalité des résidus\\
+\cellcolor{gray!10}{Breusch-Pagan} & \cellcolor{gray!10}{3.5422} & \cellcolor{gray!10}{0.1701} & \cellcolor{gray!10}{Homoscédasticité}\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{llr}
+\caption{\label{tab:unnamed-chunk-44}Facteurs d'inflation de la variance (VIF) - Ratio Vie}\\
+\toprule
+ & Variable & VIF\\
+\midrule
+\cellcolor{gray!10}{dplyr::lag(diff\_ratio, 1)} & \cellcolor{gray!10}{dplyr::lag(diff\_ratio, 1)} & \cellcolor{gray!10}{1}\\
+dplyr::lag(rendement\_sp500, 3) & dplyr::lag(rendement\_sp500, 3) & 1\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{lrrl}
+\caption{\label{tab:unnamed-chunk-45}Tests diagnostiques - Fonds propres Non-Vie}\\
+\toprule
+Test & Statistique & p.value & Hypothèse\_nulle\\
+\midrule
+\cellcolor{gray!10}{Ljung-Box} & \cellcolor{gray!10}{0.3490} & \cellcolor{gray!10}{0.5547} & \cellcolor{gray!10}{Pas d'autocorrélation}\\
+Jarque-Bera & 3.7717 & 0.1517 & Normalité des résidus\\
+\cellcolor{gray!10}{Breusch-Pagan} & \cellcolor{gray!10}{1.3123} & \cellcolor{gray!10}{0.8593} & \cellcolor{gray!10}{Homoscédasticité}\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{llr}
+\caption{\label{tab:unnamed-chunk-45}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
+\toprule
+ & Variable & VIF\\
+\midrule
+\cellcolor{gray!10}{dplyr::lag(diff\_fonds\_propres, 1)} & \cellcolor{gray!10}{dplyr::lag(diff\_fonds\_propres, 1)} & \cellcolor{gray!10}{1.055}\\
+dplyr::lag(diff\_ipc, 3) & dplyr::lag(diff\_ipc, 3) & 1.465\\
+\cellcolor{gray!10}{dplyr::lag(diff\_taux\_court, 3)} & \cellcolor{gray!10}{dplyr::lag(diff\_taux\_court, 3)} & \cellcolor{gray!10}{1.622}\\
+dplyr::lag(diff\_taux\_long, 3) & dplyr::lag(diff\_taux\_long, 3) & 1.325\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{lrrl}
+\caption{\label{tab:unnamed-chunk-46}Tests diagnostiques - Fonds propres Non-Vie}\\
+\toprule
+Test & Statistique & p.value & Hypothèse\_nulle\\
+\midrule
+\cellcolor{gray!10}{Ljung-Box} & \cellcolor{gray!10}{0.0381} & \cellcolor{gray!10}{0.8452} & \cellcolor{gray!10}{Pas d'autocorrélation}\\
+Jarque-Bera & 18.0553 & 0.0001 & Normalité des résidus\\
+\cellcolor{gray!10}{Breusch-Pagan} & \cellcolor{gray!10}{0.2348} & \cellcolor{gray!10}{0.8892} & \cellcolor{gray!10}{Homoscédasticité}\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{llr}
+\caption{\label{tab:unnamed-chunk-46}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
+\toprule
+ & Variable & VIF\\
+\midrule
+\cellcolor{gray!10}{dplyr::lag(diff\_scr, 1)} & \cellcolor{gray!10}{dplyr::lag(diff\_scr, 1)} & \cellcolor{gray!10}{1.012}\\
+dplyr::lag(diff\_taux\_court, 3) & dplyr::lag(diff\_taux\_court, 3) & 1.012\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{lrrl}
+\caption{\label{tab:unnamed-chunk-47}Tests diagnostiques - Fonds propres Non-Vie}\\
+\toprule
+Test & Statistique & p.value & Hypothèse\_nulle\\
+\midrule
+\cellcolor{gray!10}{Ljung-Box} & \cellcolor{gray!10}{0.0211} & \cellcolor{gray!10}{0.8846} & \cellcolor{gray!10}{Pas d'autocorrélation}\\
+Jarque-Bera & 101.6076 & 0.0000 & Normalité des résidus\\
+\cellcolor{gray!10}{Breusch-Pagan} & \cellcolor{gray!10}{2.7860} & \cellcolor{gray!10}{0.4258} & \cellcolor{gray!10}{Homoscédasticité}\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}[t]{llr}
+\caption{\label{tab:unnamed-chunk-47}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
+\toprule
+ & Variable & VIF\\
+\midrule
+\cellcolor{gray!10}{dplyr::lag(diff\_ratio, 1)} & \cellcolor{gray!10}{dplyr::lag(diff\_ratio, 1)} & \cellcolor{gray!10}{1.083}\\
+dplyr::lag(diff\_taux\_court, 3) & dplyr::lag(diff\_taux\_court, 3) & 1.314\\
+\cellcolor{gray!10}{dplyr::lag(diff\_taux\_long, 3)} & \cellcolor{gray!10}{dplyr::lag(diff\_taux\_long, 3)} & \cellcolor{gray!10}{1.321}\\
+\bottomrule
+\end{longtable}
+
+\end{document}
