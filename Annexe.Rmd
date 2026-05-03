@@ -1,0 +1,756 @@
+---
+title: "Annexe"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+date: "2026-05-03"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  comment = "",
+  fig.align = "left",
+  fig.width = 7,
+  fig.height = 5
+)
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(janitor)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(glue)
+library(scales)
+library(ggh4x)
+library(urca)
+library(rlang)
+library(shiny)
+library(quantmod)
+library(tidyquant)
+library(lubridate)
+library(readr)
+library(urca)
+library(tseries)
+library(lmtest)
+library(purrr)
+library(modelsummary)
+library(insee)
+library(car) 
+library(sandwich)
+```
+
+```{r, include=FALSE}
+# Indicateur de solvabilité
+df_ajt <- read_csv("trim_ajustées.csv")
+df_ajt$Nature_Group<- dplyr::recode(df_ajt$Nature_Group,
+                             "Vie"="vie/mixte")
+```
+
+```{r, echo=FALSE}
+# Données assureurs
+assur <- readRDS("BASE_SCR_ENSAE_ANONYME.rds")
+```
+
+```{r}
+# Indices financiers
+monthly_STOXX50E <- tq_get("^STOXX50E",
+                           from = "2000-01-01",
+                           to = "2025-01-01",
+                           periodicity = "monthly")
+
+# On utilise 'lubridate::year' pour être sûr que R trouve la fonction
+monthly_STOXX50E <- monthly_STOXX50E %>%
+  dplyr::filter(lubridate::year(date) > 2014)
+
+monthly_SP500 <- tq_get("^GSPC",
+                        from = "2000-01-01",
+                        to = "2025-01-01",
+                        periodicity = "monthly")
+
+monthly_SP500 <- monthly_SP500 %>% 
+  filter(year(date) > 2014)
+
+CA_40_month <- tq_get("^FCHI",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")%>%filter(year(date)>2014)
+
+monthly_DAX <- tq_get("^GDAXI",
+                      from = "2015-01-01",
+                      to   = "2025-01-01",
+                      periodicity = "monthly") %>%
+  filter(year(date) >= 2015)
+```
+
+```{r}
+# Les indices macroéconomiques
+# PIB
+# Récupération de l'historique via l'id INSEE
+
+pib_hist <- get_insee_idbank("010565700") %>%
+  mutate(date_raw = as.Date(DATE)) %>%
+  filter(date_raw >= as.Date("2014-01-01")) %>%
+  arrange(date_raw) %>%
+  mutate(
+    annee = as.numeric(format(date_raw, "%Y")),
+    remise = case_when(
+      format(date_raw, "%m") == "01" ~ "T1",
+      format(date_raw, "%m") == "04" ~ "T2",
+      format(date_raw, "%m") == "07" ~ "T3",
+      format(date_raw, "%m") == "10" ~ "T4",
+      TRUE ~ NA_character_
+    ),
+    pib = as.numeric(OBS_VALUE)
+  ) %>%
+  filter(!is.na(remise)) %>%
+  select(annee, remise, pib)
+
+#  Complément à partir du fichier XLS INSEE
+pib_complement <- tibble(
+  annee = c(2024, 2024, 2024, 2025),
+  remise = c("T2", "T3", "T4", "T1"),
+  pib = c(652.57, 654.96, 654.96, 655.58) * 1000
+)
+
+# Fusion historique + complément
+
+pib_brut <- bind_rows(pib_hist, pib_complement) %>%
+  distinct(annee, remise, .keep_all = TRUE) %>%
+  mutate(
+    remise = factor(remise, levels = c("T1", "T2", "T3", "T4"), ordered = TRUE)
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(remise = as.character(remise))
+
+# IPC
+ipc <- read_delim("ipc.csv", delim = ";", 
+    escape_double = FALSE, trim_ws = TRUE)
+
+ipc<- ipc[6:dim(ipc)[1],c(1,2)]%>%rename( "ipc"=names(ipc)[2], "annee"=names(ipc)[1])%>%mutate(ipc=as.numeric(ipc))
+```
+
+```{r,include=FALSE}
+# Imputation données manquantes
+df_quarterly <- assur %>%
+  filter(Remise %in% c("T1", "T2", "T3", "T4"))
+
+df_annual <- assur %>%
+  filter(Remise == "Annuel")
+
+stats_annuelles <- df_annual %>%
+  select(Annee, SOCIETE, Val_Annuelle = SCR)
+
+taux_individuels <- df_quarterly %>%
+  inner_join(stats_annuelles, by = c("Annee", "SOCIETE")) %>%
+  mutate(
+    Val_Trim = SCR,
+    Taux_Evol_Ent = Val_Annuelle / Val_Trim - 1
+  )
+
+ratios_croissance <- taux_individuels %>%
+  group_by(Annee, Remise) %>%
+  summarise(
+    Moyenne_Taux_Evolution = mean(Taux_Evol_Ent, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+df_quarterly_filled <- df_quarterly %>%
+  left_join(ratios_croissance, by = c("Annee", "Remise")) %>%
+  left_join(stats_annuelles, by = c("Annee", "SOCIETE")) %>%
+  mutate(
+    SCR = ifelse(
+      is.na(SCR),
+      Val_Annuelle / (1 + Moyenne_Taux_Evolution),
+      SCR
+    )
+  )
+```
+
+
+```{r,echo=FALSE}
+# Donnes assureurs
+data_assur <- df_quarterly_filled %>%
+  group_by(Annee, Remise, Nature) %>%
+  summarise(
+    ratio_moyen = mean(RATIO, na.rm = TRUE),
+    fonds_propres_moyens = mean(`FONDS PROPRES`, na.rm = TRUE),
+    scr_moyen = mean(SCR, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    trimestre = paste0(Annee, "-", Remise),
+    Annee = as.numeric(Annee) 
+  ) %>%
+  clean_names()
+```
+
+```{r,echo=FALSE}
+# SP500
+SP500_trim <- monthly_SP500 %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_sp500 = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+```
+
+```{r,echo=FALSE}
+# STOXX
+monthly_STOXX50E_trim <- monthly_STOXX50E %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_stoxx = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+```
+
+```{r,echo=FALSE}
+# DAX
+monthly_DAX_trim <- monthly_DAX %>%
+  rename(
+    date_mois = date,
+    close_price = close
+  ) %>%
+  mutate(
+    date_mois = as.character(date_mois),
+    date = as.Date(zoo::as.yearmon(date_mois, "%Y-%m")),
+    annee = lubridate::year(date),
+    remise = paste0("T", lubridate::quarter(date)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  filter(annee >= 2015 & annee <= 2025) %>%
+  group_by(annee, remise, trimestre) %>%
+  summarise(
+    close_trim = dplyr::last(close_price),
+    .groups = "drop"
+  ) %>%
+  arrange(annee, remise) %>%
+  mutate(
+    rendement_dax = c(NA, diff(log(close_trim)))
+  ) %>%
+  filter(annee >= 2016)
+```
+
+```{r,echo=FALSE}
+# CAC40
+CA_40_month <- CA_40_month %>%
+  mutate(
+    date = as.Date(date),
+    annee = lubridate::year(date),
+    trimestre = paste0(annee, "-T", lubridate::quarter(date))
+  ) %>%
+  group_by(trimestre) %>%
+  summarise(
+    close = last(close),
+    .groups = "drop"
+  ) %>%
+  arrange(trimestre) %>%
+  mutate(
+    rendement_CAC40 = c(NA, diff(log(close)))
+  )
+
+```
+
+```{r,echo=FALSE}
+# IPC
+ipc_trim <- ipc %>%
+  mutate(date_temp = ym(annee)) %>%
+  mutate(
+    annee_num = year(date_temp),
+    trimestre_num = quarter(date_temp)
+  ) %>%
+  group_by(annee_num, trimestre_num) %>%
+  summarise(ipc_moy = mean(ipc, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    remise = paste0("T", trimestre_num),
+    trimestre = paste0(annee_num, "-T", trimestre_num) 
+  ) %>%
+  filter(annee_num >= 2016 & annee_num <= 2025) %>%
+  select(annee = annee_num, remise, trimestre, ipc_moy)
+
+```
+
+```{r,echo=FALSE}
+# PIB
+# Création de la table avec calcul du taux de croissance
+pib_trim <- pib_brut %>%
+  arrange(annee, remise) %>% # Sécurité pour le calcul du lag
+  mutate(
+    # Calcul du taux de croissance trimestriel (log-différence)
+    diff_pib = log(pib) - log(dplyr::lag(pib, 1))
+  ) %>%
+  select(annee, remise, pib, diff_pib)
+```
+
+```{r,echo=FALSE}
+# Taux
+taux_data_raw <- readRDS("mes_taux_fred.rds")
+
+taux_trimestriel <- taux_data_raw %>%
+  rename(price = 3) %>% 
+  filter(!is.na(price)) %>%
+  pivot_wider(names_from = symbol, values_from = price) %>%
+  rename(taux_long = DGS10, taux_court = FEDFUNDS) %>%
+  mutate(
+    annee = year(date),
+    remise = paste0("T", quarter(date))
+  ) %>%
+  group_by(annee, remise) %>%
+  summarise(
+    taux_long_trim = mean(taux_long, na.rm = TRUE),
+    taux_court_trim = mean(taux_court, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(trimestre = paste0(annee, "-", remise))
+
+taux <- janitor::clean_names(taux_trimestriel)
+
+taux_clean <- taux_trimestriel %>%
+  rename(
+    taux_long = taux_long_trim,
+    taux_court = taux_court_trim
+  ) %>%
+  select(annee, remise, trimestre, taux_long, taux_court) %>%
+  arrange(annee, remise)
+```
+
+```{r,echo=FALSE}
+# Fusion des tables
+data_assur <- data_assur %>%
+  rename_with(tolower) %>% 
+  mutate(
+    annee = as.numeric(annee),
+    trimestre = paste0(annee, "-", remise)
+  )
+
+pib_trim_clean <- pib_trim %>% 
+  mutate(
+    annee = as.numeric(as.character(annee)),
+    trimestre = paste0(annee, "-", remise)
+  ) %>%
+  select(trimestre, pib, diff_pib)
+
+taux_clean_num <- taux_trimestriel %>% 
+  mutate(annee = as.numeric(as.character(annee)))
+
+ipc_trim_clean <- ipc_trim %>% 
+  mutate(annee = as.numeric(as.character(annee))) %>%
+  select(annee, remise, trimestre, ipc_moy)
+
+# 2. Construction de la table finale
+data_final <- data_assur %>%
+  clean_names() %>%
+  mutate(annee = as.numeric(as.character(annee))) %>%
+  
+  # Jointures sur le trimestre
+  left_join(monthly_STOXX50E_trim %>% select(trimestre, rendement_stoxx), by = "trimestre") %>%
+  left_join(CA_40_month %>% select(trimestre, rendement_CAC40), by = "trimestre") %>%
+  left_join(monthly_DAX_trim %>% select(trimestre, rendement_dax), by = "trimestre") %>%
+  left_join(SP500_trim %>% select(trimestre, rendement_sp500), by = "trimestre") %>%
+  left_join(taux_clean_num %>% select(trimestre, taux_long_trim, taux_court_trim), by = "trimestre") %>%
+  left_join(pib_trim_clean %>% select(trimestre, pib, diff_pib), by = "trimestre") %>%
+  left_join(ipc_trim_clean, by = c("annee", "remise", "trimestre")) %>%
+  
+  arrange(annee, remise)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Ajout des variables en log différence
+data_final <- data_final %>%
+  arrange(nature, annee, remise) %>%
+  # Groupe par secteur pour ne pas mélanger Vie et Non-Vie
+  group_by(nature) %>%
+  # Calculs des variations (Log-diff pour les milliards, Diff simple pour les taux)
+  mutate(
+    # LOG-DIFF (Taux de croissance en %) 
+    diff_ratio         = log(as.numeric(ratio_moyen)) - log(lag(as.numeric(ratio_moyen))),
+    diff_fonds_propres = log(fonds_propres_moyens) - log(lag(fonds_propres_moyens)),
+    diff_scr           = log(scr_moyen) - log(lag(scr_moyen)),
+    diff_ipc           = log(ipc_moy) - log(lag(ipc_moy)),
+    
+    # DIFF SIMPLE (Variation en points) 
+    diff_taux_court    = taux_court_trim - lag(taux_court_trim),
+    diff_taux_long     = taux_long_trim - lag(taux_long_trim)
+  ) %>%
+  ungroup() %>%
+  filter(!is.na(diff_ratio))
+```
+
+```{r,echo=FALSE}
+#Création une table Non-Vie
+data_non_vie <- data_final %>%
+  filter(nature == "Non Vie")
+
+#Création une table Vie
+data_vie <- data_final %>%
+  filter(nature == "Vie/Capitalisation")
+```
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# 1ere specification
+model_ratio_vie <- lm(diff_ratio ~ rendement_stoxx + rendement_sp500 + diff_ipc + diff_taux_court + diff_taux_long + diff_pib, data = data_vie)
+stats_a_afficher <- c("estimate", "std.error", "statistic", "p.value")
+
+modelsummary(
+  model_ratio_vie,
+  estimate = "estimate",
+  statistic = stats_a_afficher[-1], 
+  shape = term ~ statistic, 
+  fmt = 4, 
+  title = "Résultats de la régression du ratio de solvabilité - Vie",
+  gof_map = c("nobs", "r.squared", "adj.r.squared"),
+  output = "kableExtra"
+) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.width=6, fig.height=3, fig.align='center'}
+# Diagnostic du modele
+res <- residuals(model_ratio_vie)
+# Calcul des tests
+dw <- dwtest(model_ratio_vie)
+bp <- bptest(model_ratio_vie)
+sh <- shapiro.test(res)
+lb <- Box.test(res, lag = 10, type = "Ljung-Box") # Test sur les 10 premiers lags
+
+# Création du tableau de synthèse
+diag_table <- data.frame(
+  Test = c("Autocorrélation (Durbin-Watson)", 
+           "Indépendance Globale (Ljung-Box)",
+           "Homoscédasticité (Breusch-Pagan)", 
+           "Normalité (Shapiro-Wilk)"),
+  Statistique = c(round(dw$statistic, 4), round(lb$statistic, 4), 
+                  round(bp$statistic, 4), round(sh$statistic, 4)),
+  P_value = c(round(dw$p.value, 4), round(lb$p.value, 4), 
+              round(bp$p.value, 4), round(sh$p.value, 4)),
+  Verdict = c(
+    ifelse(dw$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée"),
+    ifelse(lb$p.value > 0.05, "Bruit blanc confirmé", "Hypothèse rejetée"),
+    ifelse(bp$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée"),
+    ifelse(sh$p.value > 0.05, "Hypothèse validée", "Hypothèse rejetée")
+  )
+)
+
+kable(diag_table, booktabs = TRUE, caption = "Tests sur les résidus modèle ratio - Vie") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = FALSE)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_fp_vie_dynamique2 <- lm(
+  diff_fonds_propres ~ 
+    dplyr::lag(diff_fonds_propres, 1) +  
+    dplyr::lag(diff_taux_long, 1) +  
+    dplyr::lag(rendement_sp500, 2)+
+    dplyr::lag(diff_ipc, 4),
+  data = data_vie
+)
+
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_test <- Box.test(residuals(model_fp_vie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+library(tseries)
+jb_test <- jarque.bera.test(residuals(model_fp_vie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+library(lmtest)
+bp_test <- bptest(model_fp_vie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+library(car)
+vif_values <- vif(model_fp_vie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_df <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_test$statistic, jb_test$statistic, bp_test$statistic), 4),
+  `p-value` = round(c(lb_test$p.value, jb_test$p.value, bp_test$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_df,
+      caption = "Tests diagnostiques - Fonds Propres Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+# VIF dans un tableau séparé
+vif_df <- data.frame(
+  Variable = names(vif_values),
+  VIF = round(vif_values, 3)
+)
+
+kable(vif_df,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fonds Propres Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_vie_dynamique2 <- lm(
+  diff_scr ~ 
+    dplyr::lag(diff_scr, 1) +  
+    dplyr::lag(diff_taux_long, 1) +   
+    dplyr::lag(diff_ipc, 3),
+  data = data_vie
+)
+
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testscrv <- Box.test(residuals(model_scr_vie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testscrv <- jarque.bera.test(residuals(model_scr_vie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testscrv <- bptest(model_scr_vie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesscrv <- vif(model_scr_vie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfscrv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testscrv$statistic, jb_testscrv$statistic, bp_testscrv$statistic), 4),
+  `p-value` = round(c(lb_testscrv$p.value, jb_testscrv$p.value, bp_testscrv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_df,
+      caption = "Tests diagnostiques - SCR Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+# VIF dans un tableau séparé
+vif_dfscrv <- data.frame(
+  Variable = names(vif_valuesscrv),
+  VIF = round(vif_valuesscrv, 3)
+)
+
+kable(vif_dfscrv,
+      caption = "Facteurs d'inflation de la variance (VIF) - SCR Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_ratio_vie_dynamique2 <- lm(
+  diff_ratio ~ 
+    dplyr::lag(diff_ratio, 1) +  
+    dplyr::lag(rendement_sp500, 3),
+  data = data_vie
+)
+
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testrv <- Box.test(residuals(model_ratio_vie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testrv <- jarque.bera.test(residuals(model_ratio_vie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testrv <- bptest(model_ratio_vie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesrv <- vif(model_ratio_vie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfrv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testrv$statistic, jb_testrv$statistic, bp_testrv$statistic), 4),
+  `p-value` = round(c(lb_testrv$p.value, jb_testrv$p.value, bp_testrv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfrv,
+      caption = "Tests diagnostiques - Ratio de solvabilité Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfrv <- data.frame(
+  Variable = names(vif_valuesrv),
+  VIF = round(vif_valuesrv, 3)
+)
+
+kable(vif_dfrv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Ratio Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_fp_nvie_dynamique2 <- lm(
+  diff_fonds_propres ~ 
+    dplyr::lag(diff_fonds_propres, 1) + 
+    dplyr::lag(diff_ipc, 3) +
+    dplyr::lag(diff_taux_court, 3)+
+    dplyr::lag(diff_taux_long, 3),
+  data = data_non_vie
+)
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testnv <- Box.test(residuals(model_fp_nvie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testnv <- jarque.bera.test(residuals(model_fp_nvie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testnv <- bptest(model_fp_nvie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesnv <- vif(model_fp_nvie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfnv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testnv$statistic, jb_testnv$statistic, bp_testnv$statistic), 4),
+  `p-value` = round(c(lb_testnv$p.value, jb_testnv$p.value, bp_testnv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfnv,
+      caption = "Tests diagnostiques - Fonds propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfnv <- data.frame(
+  Variable = names(vif_valuesnv),
+  VIF = round(vif_valuesnv, 3)
+)
+
+kable(vif_dfnv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+model_scr_nvie_dynamique2 <- lm(
+  diff_scr ~ 
+    dplyr::lag(diff_scr, 1) +  
+    dplyr::lag(diff_taux_court,3),
+  data = data_non_vie
+)
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testscrnv <- Box.test(residuals(model_scr_nvie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testscrnv <- jarque.bera.test(residuals(model_scr_nvie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testscrnv <- bptest(model_scr_nvie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesscrnv <- vif(model_scr_nvie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfscrnv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testscrnv$statistic, jb_testscrnv$statistic, bp_testscrnv$statistic), 4),
+  `p-value` = round(c(lb_testscrnv$p.value, jb_testscrnv$p.value, bp_testscrnv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfscrnv,
+      caption = "Tests diagnostiques - Fonds propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfscrnv <- data.frame(
+  Variable = names(vif_valuesscrnv),
+  VIF = round(vif_valuesscrnv, 3)
+)
+
+kable(vif_dfscrnv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# On crée le modèle avec les retards identifiés par Granger
+model_ratio_nvie_dynamique2 <- lm(
+  diff_ratio ~ 
+    dplyr::lag(diff_ratio, 1) +
+    dplyr::lag(diff_taux_court,3)+
+    dplyr::lag(diff_taux_long,3),
+  data = data_non_vie
+)
+# 1. Ljung-Box (autocorrélation des résidus)
+lb_testrnv <- Box.test(residuals(model_ratio_nvie_dynamique2), type = "Ljung-Box")
+
+# 2. Jarque-Bera (normalité des résidus)
+jb_testrnv <- jarque.bera.test(residuals(model_ratio_nvie_dynamique2))
+
+# 3. Breusch-Pagan (hétéroscédasticité)
+bp_testrnv <- bptest(model_ratio_nvie_dynamique2)
+
+# 4. VIF (multicolinéarité)
+vif_valuesrnv <- vif(model_ratio_nvie_dynamique2)
+
+# --- Tableau récapitulatif des tests ---
+tests_dfrnv <- data.frame(
+  Test = c("Ljung-Box", "Jarque-Bera", "Breusch-Pagan"),
+  Statistique = round(c(lb_testrnv$statistic, jb_testrnv$statistic, bp_testrnv$statistic), 4),
+  `p-value` = round(c(lb_testrnv$p.value, jb_testrnv$p.value, bp_testrnv$p.value), 4),
+  Hypothèse_nulle = c("Pas d'autocorrélation", "Normalité des résidus", "Homoscédasticité")
+)
+
+kable(tests_dfrnv,
+      caption = "Tests diagnostiques - Fonds propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+
+vif_dfrnv <- data.frame(
+  Variable = names(vif_valuesrnv),
+  VIF = round(vif_valuesrnv, 3)
+)
+
+kable(vif_dfrnv,
+      caption = "Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
