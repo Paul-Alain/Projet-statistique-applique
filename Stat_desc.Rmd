@@ -1390,7 +1390,297 @@ L'ensemble des modèles estimés satisfont les conditions de validité économé
 
 Par ailleurs, cette approche en différences ne permet pas d'identifier les relations d'équilibre de long terme. Ces éléments justifient le recours à une spécification ARDL qui permet d'intégrer simultanément dynamiques de court terme et relations de cointégration éventuelles.
 
+## II - Modèle ARDL
 
+
+Le modèle ARDL (Autoregressive Distributed Lag) est une approche économétrique puissante pour examiner les liens dynamiques entre des variables dans le temps. Contrairement aux méthodes classiques de cointégration, l'ARDL est particulièrement flexible car il permet d'analyser des séries ayant différents ordres d'intégration ($I(0)$ ou $I(1)$)
+
+### Formulation Mathématique du Modèle
+
+Le modèle fusionne une partie autorégressive (les valeurs passées du ratio) et des délais répartis (les valeurs actuelles et passées des marchés).L'équation structurelle est la suivante:
+
+$$ratio_{t} = \phi + \sum_{i=1}^{p} a_{i} ratio_{t-i} + \sum_{j=0}^{q} b_{j} X_{t-j} + \epsilon_{t}$$
+
+Où :
+
+- $ratio_{t}$ : La variable dépendante.
+- $X_{t}$ : Les variables explicatives.
+- $p, q$ : Les ordres de retard respectifs.
+- $\epsilon_{t}$ : Le terme d'erreur (bruit blanc)
+
+Pour estimer notre modèle nous procedons en 3 étapes : 
+
+ 1. Variables explicatives et Stationnarité.
+ 2. Recherche des retard optimaux et estimation du modèle
+ 3. Diagnostic du modèle
+
+### Variables explicatives et Stationnarité
+
+Pour ce modèle, les variables explicatives retenues se divisent en deux catégories :
+
+- Les variables de marché : les indices boursiers S&P 500 et CAC 40.
+- Les variables macroéconomiques : le taux de croissance du PIB, l'Indice des Prix à la Consommation (IPC) et le taux d'intérêt de long terme.
+
+Afin de traiter les séries présentant une croissance de nature exponentielle, nous avons appliqué une transformation logarithmique aux indices boursiers (CAC 40, S&P 500) ainsi qu'à l'IPC. Cette pratique, standard en économétrie financière, répond à un objectif analytique majeur : elle permet de linéariser ces séries et de convertir les variations absolues en variations relatives. Ainsi, les coefficients estimés du modèle s'interpréteront directement comme des élasticités, mesurant l'impact d'une variation de $1 \%$ d'un indice de marché ou des prix sur le ratio de solvabilité.
+
+Comme souligné précédemment, la validité du test de cointégration aux bornes de l'approche ARDL repose sur l'hypothèse stricte qu'aucune série n'est intégrée d'ordre 2, soit $I(2)$, ou supérieur, ce qui rendrait la méthode caduque. L'évaluation de l'ordre d'intégration de chaque variable a donc été menée rigoureusement en suivant la procédure séquentielle du test de Dickey-Fuller Augmenté (ADF) et du test de KPSS, avec une méthodologie identique à celle détaillée dans la section précédente.
+
+À l'issue de ces tests de racine unitaire, les résultats suivants se dégagent :
+
+- Variables $I(0)$ : Le ratio de solvabilité et le taux de croissance du PIB sont stationnaires en niveau.
+- Variables $I(1)$ : Les logarithmes des variables de marché (CAC 40, S&P 500) et de l'inflation (IPC) présentent une racine unitaire en niveau, mais deviennent stationnaires après un passage en différence première.
+- Traitement de la variable $I(2)$ : Le test a révélé que le taux d'intérêt de long terme est intégré d'ordre 2. Pour l'introduire de manière valide dans le modèle sans violer les hypothèses de l'ARDL, cette série a été préalablement différenciée une fois. La série résultante (la variation du taux d'intérêt) est alors $I(1)$.
+
+Cette coexistence de variables explicatives intégrées d'ordres mixtes, $I(0)$ et $I(1)$, justifie pleinement le recours et la pertinence de la modélisation ARDL pour notre étude.
+
+```{r}
+### Ratio de solvabilité
+
+data_trim <- read.csv("trim_ajustees.csv")
+data_trim <- data_trim %>% mutate(nb = total_ajuste/Moyenne_Ajustee)
+data_trim_F <- data_trim%>%filter( Variable == "FONDS PROPRES")%>%
+  mutate(
+    Trimestre = case_when(
+      Remise == "T1" ~ Annee + 0.00,
+      Remise == "T2" ~ Annee + 0.25,
+      Remise == "T3" ~ Annee + 0.50,
+      Remise == "T4" ~ Annee + 0.75 
+    ))%>%select(-Remise, -Variable)
+data_trim_S <- data_trim%>%filter( Variable == "SCR")%>%
+  mutate(
+    Trimestre = case_when(
+      Remise == "T1" ~ Annee + 0.00,
+      Remise == "T2" ~ Annee + 0.25,
+      Remise == "T3" ~ Annee + 0.50,
+      Remise == "T4" ~ Annee + 0.75 
+    ))%>%select(-Remise, -Variable)
+
+data_t_F <- data_trim_F%>%filter(Trimestre >= 2017)%>%group_by(Trimestre,Annee)%>%summarise("FONDS PROPRES" = sum(total_ajuste), nb = sum(nb) )%>%ungroup()
+data_t_S <- data_trim_S%>%filter(Trimestre >= 2017)%>%group_by(Trimestre,Annee)%>%summarise(SCR = sum(total_ajuste), nb = sum(nb) )%>%ungroup()
+
+data_f <- data_t_F%>%inner_join(data_t_S, by = c("Trimestre", "Annee"))%>%mutate(ratio = `FONDS PROPRES`/SCR, fonds = `FONDS PROPRES`/nb.x, scr = SCR/nb.y)
+
+## IPC
+
+ipc_trim <- read.csv("ipc_trim.csv")
+ipc <- ipc_trim%>%mutate(
+  Trimestre = case_when(
+    remise == "T1" ~ annee + 0.00,
+    remise == "T2" ~ annee + 0.25,
+    remise == "T3" ~ annee + 0.50,
+    remise == "T4" ~ annee + 0.75 
+  ))
+
+pib_brut <- read.csv("pib.csv")
+
+# Création de la table avec calcul du taux de croissance
+pib_brut <- pib_brut %>%
+  arrange(Annee, Remise) %>% # Sécurité pour le calcul du lag
+  mutate(
+    # Calcul du taux de croissance trimestriel (log-différence)
+    taux_pib =  log(pib) - log(dplyr::lag(pib, 1))
+  )pib_brut <- read.csv("pib.csv")
+
+# Création de la table avec calcul du taux de croissance
+pib_brut <- pib_brut %>%
+  arrange(Annee, Remise) %>% # Sécurité pour le calcul du lag
+  mutate(
+    # Calcul du taux de croissance trimestriel (log-différence)
+    taux_pib =  log(pib) - log(dplyr::lag(pib, 1))
+  )
+
+pib_brut <- pib_brut %>%
+  mutate(
+    Trimestre = case_when(
+      Remise == "T1" ~ Annee + 0.00 ,
+      Remise == "T2" ~ Annee + 0.25,
+      Remise == "T3" ~ Annee + 0.50,
+      Remise == "T4" ~ Annee + 0.75,
+      TRUE ~ Annee
+    ))
+
+## Taux de long terme
+
+taux_data_raw <- readRDS("mes_taux_fred.rds")
+
+taux_trimestriel <- taux_data_raw %>%
+  rename(price = 3) %>% 
+  filter(!is.na(price)) %>%
+  pivot_wider(names_from = symbol, values_from = price) %>%
+  rename(taux_long = DGS10, taux_court = FEDFUNDS) %>%
+  mutate(
+    annee = year(date),
+    remise = paste0("T", quarter(date))
+  ) %>%
+  group_by(annee, remise) %>%
+  summarise(
+    taux_long_trim = mean(taux_long, na.rm = TRUE),
+    taux_court_trim = mean(taux_court, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(trimestre = paste0(annee, "-", remise))
+
+taux <- janitor::clean_names(taux_trimestriel)
+taux <- taux%>%mutate(
+    Trimestre = case_when(
+      remise == "T1" ~ annee + 0.00 ,
+      remise == "T2" ~ annee + 0.25,
+      remise == "T3" ~ annee + 0.50,
+      remise == "T4" ~ annee + 0.75,
+      TRUE ~ annee
+    ))%>%rename(taux_court = taux_court_trim, taux_long = taux_long_trim)%>%select(-annee, trimestre,remise)
+taux <- taux%>%filter(Trimestre>=2016, Trimestre<2026)
+
+## S&p 
+
+sp <- read.csv("sp.csv")
+
+## CAC 40 
+
+ca <- read.csv("ca.csv")
+ca <- ca%>%filter(Trimestre >=2017)
+```
+
+### Recherche des retard optimaux et estimation du modèle
+
+#### Retards optimaux
+
+```{r estimation_modele, message=FALSE, warning=FALSE}
+
+# 1. Préparation des données et transformation logarithmique
+data_ardl_df <- data_f %>%
+  inner_join(ipc %>% select(-annee, -X), by = 'Trimestre') %>%
+  inner_join(sp %>% select(-annee, -X), by = 'Trimestre') %>%
+  inner_join(ca%>%select(-X))%>%
+  inner_join(pib_brut%>%select(Trimestre, taux_pib), by = 'Trimestre')%>%
+  inner_join(taux%>%select(Trimestre, taux_long, taux_court),by = "Trimestre")%>%
+  mutate(
+    l_ipc   = log(ipc_moy),
+    l_sp    = log(sp),
+    l_cac   = log(cac),
+    d_taux_l = taux_long - lag(taux_long),
+  )
+
+# Conversion en série temporelle
+data_ardl_ts <- ts(data_ardl_df, start = c(2017, 1), frequency = 4)
+
+# 2. Recherche automatique du modèle optimal
+modele_auto <- auto_ardl(
+  ratio ~ l_ipc + taux_pib + d_taux_l+l_sp+l_cac,
+  data = data_ardl_ts, selection = "BIC",
+  max_order = 3)
+# --- AFFICHAGE DES RETARDS OPTIMAUX ---
+retards <- as.data.frame(t(modele_auto$best_order))
+#colnames(retards) <- c("Ratio (p)", "Log(IPC)", "taux_pib","Log(S&P)"," nu", "ed")
+kable(retards, caption = "Retards optimaux sélectionnés") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
+```
+
+Afin d'optimiser la précision de l'estimation, le nombre idéal de retards a été fixé automatiquement en s'appuyant sur des critères d'information. Notre choix s'est spécifiquement porté sur le critère de Schwarz, ou critère d'information bayésien (BIC). Contrairement au critère d'Akaike (AIC), le BIC pénalise plus fortement la complexité du modèle (le nombre de paramètres estimés), ce qui permet de privilégier une spécification plus stricte et parcimonieuse, limitant ainsi le risque de surapprentissage.
+
+L'algorithme d'optimisation a convergé vers la structure optimale suivante : un modèle $\text{ARDL}(2, 3, 0, 1, 0, 0)$. L'équation correspondante peut se formaliser ainsi :
+
+$$\begin{aligned}
+\text{ratio}_t = \alpha_0 & + \gamma_1 \text{ratio}_{t-1} + \gamma_2 \text{ratio}_{t-2} \\
+& + \beta_{1,0} l\_ipc_t + \beta_{1,1} l\_ipc_{t-1} + \beta_{1,2} l\_ipc_{t-2} + \beta_{1,3} l\_ipc_{t-3} \\
+& + \beta_{2,0} \text{taux\_pib}_t + \beta_{3,0} d\_taux\_l_t + \beta_{3,1} d\_taux\_l_{t-1} \\
+& + \beta_{4,0} l\_sp_t + \beta_{5,0} l\_cac_t + \epsilon_t
+\end{aligned}$$
+
+#### Test des bornes (cointégration)
+
+```{r cointégration, comment = ""}
+
+# --- TEST DES BORNES (COINTÉGRATION) ---
+test_bornes <- bounds_f_test(modele_auto$best_model, case = 3)
+test_bornes
+```
+
+**Interprétation des résultats : Cointégration**
+
+La première étape de l'analyse consiste à vérifier l'existence d'une relation d'équilibre de long terme entre le ratio de solvabilité et ses déterminants via le test aux bornes (Bounds F-test). La statistique de Fisher obtenue est de `r round(test_bornes$statistic,2)` avec une p-value de `r round(test_bornes$p.value,4)`. Ce résultat, largement inférieur au seuil de $5 \%$, nous permet de rejeter l'hypothèse nulle d'absence de cointégration. Il existe donc une relation stable et non fallacieuse entre ces variables sur le long terme, ce qui valide l'utilisation du modèle ARDL pour analyser la dynamique du ratio.
+
+#### Coefficients de long terme
+
+```{r , comment = ""}
+# --- COEFFICIENTS DE LONG TERME (MULTIPLIERS) ---
+
+lt_coeffs <- multipliers(modele_auto$best_model)
+print(lt_coeffs)
+#kable(lt_coeffs, digits = 6, caption = "Relations d'équilibre de Long Terme (Elasticités)") %>%
+  #kable_styling(bootstrap_options = c("striped", "bordered"), full_width = F) %>%
+  #add_header_above(c(" " = 1, "Impact permanent sur le ratio" = 4))
+```
+
+**Interprétation des résultats :  Relation de Long Terme**
+
+log(S&P 500) et log(CAC 40) ont des coefficients significatif au seuil de $5\%$. La variation du taux long terme est marginalement significatif au seuil de 10% ($t = 1.74$, $p = 0.097$). On peut donc dire qu'une appréciation de 1% de l'indice américain est associée à une hausse de 0.46 point du ratio de solvabilité à long terme.
+
+log(IPC) et Taux PIB sont non significativent. Cela indiquent que ces variables macroéconomiques n'exercent pas d'influence statistiquement détectable sur le ratio de solvabilité à long terme, une fois les effets de marché contrôlés.
+
+Le ratio de solvabilité des sociétés d'assurances est structurellement lié aux dynamiques des marchés actions. La diversification géographique apparaît comme un facteur clé : l'exposition au marché américain renforce la solvabilité, tandis qu'une concentration sur le marché européen constitue un facteur de vulnérabilité. Ce résultat plaide pour une gestion prudentielle attentive à la composition géographique des portefeuilles.
+
+#### Dynamique de court terme
+
+Pour estimer la dynamique de court terme, on réecrit le modèle sous la forme de correction d'erreur. L'estimation du modèle sous sa forme non contrainte à correction d'erreur permet d'analyser la vitesse à laquelle le ratio de solvabilité s'ajuste après un choc exogène. Il s'agit d'un transformation algébrique de l'équation de base du modèle : 
+
+$$\begin{aligned}
+\Delta \text{ratio}_t = \alpha_0 &+ \underbrace{\lambda \cdot \left[ \text{ratio}_{t-1} - \left( \beta_1 l\_ipc_{t-1} + \beta_2 \text{taux\_pib}_{t-1} + \beta_3 d\_taux\_l_{t-1} + \beta_4 l\_sp_{t-1} + \beta_5 l\_cac_{t-1} \right) \right]}_{\textbf{Force de Rappel (ECT}_{t-1}\textbf{)}} \\
+&+ \gamma_{1} \Delta \text{ratio}_{t-1} \\
+&+ \delta_{1,0} \Delta l\_ipc_t + \delta_{1,1} \Delta l\_ipc_{t-1} + \delta_{1,2} \Delta l\_ipc_{t-2} \\
+&+ \delta_{3,0} \Delta d\_taux\_l_t + \epsilon_t
+\end{aligned}$$
+```{r}
+# --- DYNAMIQUE DE COURT TERME (UECM) ---
+model_uecm <- uecm(modele_auto$best_model)
+summary_uecm <- summary(model_uecm)
+
+# Extraction des valeurs du R2
+r2_val <- round(summary_uecm$r.squared, 4)
+r2_adj <- round(summary_uecm$adj.r.squared, 4)
+tableau <-summary_uecm$coefficients
+#colnames(tableau)[4] <- "P value"
+# Affichage du tableau
+#kable(tableau, digits = 5, caption = "Modèle à Correction d'Erreur (Dynamique de Court Terme)") %>%kable_styling(latex_options = "striped") %>%scroll_box(width = "100%", height = "400px")
+
+# Affichage des statistiques de qualité sous le tableau
+#cat(paste0("R-squared: ", r2_val, " | Adjusted R-squared: ", r2_adj))
+```
+
+$\lambda$ est le coefficient d'ajustement : correspond au coefficient du Terme de Correction d’Erreur (ECT). Dans un modèle de cointégration, elle mesure la capacité de la variable dépendante (le ratio de solvabilité) à retourner vers son équilibre de long terme après un choc macroéconomique.D’un point de vue mathématique, elle indique quelle proportion de l’écart à l’équilibre constaté à la période $t-1$ est résorbée à la période $t$.
+
+Ce coefficient est estimé à $\lambda = −1.44 \;(p < 0.001)$, étant significatif au seuil de 1%. La négativité du coefficient confirme l'existence d'une relation de cointégration entre le ratio de solvabilité et les variables macroéconomiques.La valeur absolue supérieure à l'unité traduit une dynamique de convergence oscillatoire : le système sur-corrige les écarts à l'équilibre d'un trimestre à l'autre. Ce résultat est cohérent avec la forte volatilité observée sur le graphique du ratio, notamment lors de la période 2019-2022, où les mesures de sauvegarde et la reprise des marchés ont provoqué des ajustements brutaux et rapides de la solvabilité globale du marché.
+
+```{r}
+library(ggplot2)
+ggplot(data_f, aes(x = Trimestre)) +
+  geom_line(aes(y = ratio)) + geom_point(aes(y = ratio))+
+  labs(title = "Evolution du ratio de solvabilité moyen", x= "Dates",
+       y = "Ratio") +
+  theme_minimal()
+```
+
+#### Diagnostic et limites du modèle
+
+  (i) Diagnostic des résidus
+  
+La validité des inférences statistiques repose sur le respect des hypothèses fondamentales du modèle de régression. Trois batteries de tests ont été conduites pour vérifier la qualité des résidus.
+
+Test d'autocorrélation (Breusch-Godfrey) : la statistique LM = 9.47 associée à une p-value de 0.050 ne permet pas de rejeter l'hypothèse nulle d'absence d'autocorrélation au seuil de 5%. La structure de retards retenue capture donc correctement la dynamique temporelle des données, garantissant la validité des écarts-types estimés.
+
+Test de normalité (Jarque-Bera) : la statistique χ² = 2.04 (p-value = 0.36) conduit au non-rejet de l'hypothèse de normalité des résidus. Ce résultat assure la validité des tests de Student et de Fisher, même sur un échantillon de taille modeste.
+
+Tests de stabilité structurelle (CUSUM et CUSUM²) : les sommes cumulées des résidus récursifs demeurent à l'intérieur des bandes de confiance à 5% sur l'ensemble de la période d'estimation. Les coefficients du modèle sont donc stables dans le temps, confirmant l'absence de rupture structurelle.
+
+  (ii) Limites du modèles
+  
+Malgré la robustesse des diagnostics, plusieurs limites méthodologiques doivent être soulignées.
+
+  1. Contrainte d'échantillon : avec seulement 35 observations trimestrielles, le modèle souffre d'une faible puissance statistique. Cette taille limite le nombre de variables explicatives et de retards pouvant être introduits sans surparamétrage
+
+  2. Agrégation sectorielle : l'utilisation d'un ratio de solvabilité moyen masque l'hétérogénéité des institutions. Les dynamiques d'ajustement peuvent différer significativement entre assureurs, banques et autres acteurs financiers.
+
+  3. Période d'estimation atypique : l'échantillon inclut des épisodes de stress majeurs (crise Covid-19, choc inflationniste 2022-2023) qui peuvent influencer de manière disproportionnée les coefficients estimés. La généralisation des résultats à des périodes plus stables requiert une certaine prudence.
 
 # Conclusion
 
@@ -1974,6 +2264,80 @@ kable(vif_dfrnv,
       caption = "Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie",
       booktabs = TRUE) %>%
   kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
+```
+
+
+## II - Modèle ARDL 
+```{r}
+colnames(tableau)[4] <- "P value"
+#Affichage du tableau
+kable(tableau, digits = 5, caption = "Modèle à Correction d'Erreur (Dynamique de Court Terme)") %>%kable_styling(latex_options = "striped") %>%scroll_box(width = "100%", height = "400px")
+
+#Affichage des statistiques de qualité sous le tableau
+cat(paste0("R-squared: ", r2_val, " | Adjusted R-squared: ", r2_adj))
+```
+ 
+**Test d'absence d'autocorrélation des résidus :** 
+
+```{r cor, comment = ""}
+final_model <- modele_auto$best_model
+
+### 1. Test d'autocorrélation (Breusch-Godfrey)
+# H0 : Absence d'autocorrélation des résidus
+bg_test <- lmtest::bgtest(final_model, order = 4) 
+bg_test
+```
+
+
+**Test de Normalité (Jarque-Bera)**
+
+```{r nor, , comment = ""}
+### 3. Test de Normalité (Jarque-Bera)
+# H0 : Les résidus suivent une loi normale
+# On extrait les résidus d'abord
+residus <- residuals(final_model)
+jb_test <- tseries::jarque.bera.test(residus)
+print(jb_test)
+```
+
+**Test de stabilité CUSUM et CUSUM Squared :** \\
+
+```{r test 4 CUSUM, message=FALSE, warning=FALSE}
+library(strucchange)
+
+# Calcul du CUSUM
+par(mfrow = c(1,2))
+cusum_test <- efp(final_model, data = data_ardl_ts, type = "Rec-CUSUM")
+plot(cusum_test, main = "Test de stabilité CUSUM")
+
+# Calcul du CUSUM au carré (très important pour les séries financières)
+cusumsq_test <- efp(final_model, data = data_ardl_ts, type = "OLS-CUSUM")
+plot(cusumsq_test, main = "Test de stabilité CUSUM Squared")
+```
+
+**Diagnoctic visuel**
+
+```{r diagnostic, }
+
+# On récupère l'objet de régression final
+final_model <- modele_auto$best_model
+
+residus <- residuals(final_model)
+par(mfrow=c(2,2)) # Quadrillage 2x2
+
+# 1. Graphique des résidus dans le temps
+plot(residus, type="l", main="Résidus dans le temps", ylab="Erreur")
+abline(h=0, col="red")
+
+# 2. Histogramme (Normalité)
+hist(residus, main="Distribution des résidus", col="skyblue", border="white")
+
+# 3. ACF (Autocorrélation)
+acf(residus, main="Autocorrélation des résidus")
+
+# 4. Q-Q Plot (Normalité théorique)
+qqnorm(residus)
+qqline(residus, col="red")
 ```
 
 # Lecture et analyse des rapports annuels des compagnies d’assurance
