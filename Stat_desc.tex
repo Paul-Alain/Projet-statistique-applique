@@ -37,6 +37,16 @@
 }{% if KOMA class
   \KOMAoptions{parskip=half}}
 \makeatother
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
 \usepackage{graphicx}
 \makeatletter
 \newsavebox\pandoc@box
@@ -102,35 +112,42 @@ s'inscrit le cadre réglementaire de Solvabilité II, entré en vigueur en
 2016, dont l'objectif principal est de garantir que les compagnies
 d'assurance disposent de fonds propres suffisants pour faire face à
 leurs obligations et ainsi instaurer un climat de confiance entre
-assureurs et assurés. La solvabilité d'une compagnie d'assurance désigne
-sa capacité à respecter ses engagements financiers à court, moyen et
-long terme, notamment en matière de règlement des sinistres et de
-prestations contractuelles. Elle constitue ainsi un indicateur
-fondamental de la solidité financière des assureurs. Toutefois, cette
-solvabilité demeure fortement influencée par l'environnement économique
-et financier. Par exemple, une hausse du taux d'inflation peut entraîner
-une augmentation mécanique du coût des sinistres, tandis qu'une
-variation des taux d'intérêt affecte à la fois les perspectives de
-rendement des placements financiers et la valorisation des obligations
-détenues par les compagnies d'assurance. Dans un contexte marqué par la
-volatilité des marchés financiers, les risques de perturbation des
-chaînes de valeur économiques, ainsi que le renforcement des exigences
-prudentielles, il devient essentiel de mieux comprendre les déterminants
-de la solvabilité des entreprises d'assurance. Cette problématique est
-d'autant plus importante que la stabilité et la pérennité du secteur
-assurantiel en dépendent directement. Le présent travail a donc pour
-objectif d'évaluer l'impact des variables financières et
-macroéconomiques sur la solvabilité des entreprises d'assurance en
-France. Plus précisément, il s'agira d'identifier les variables les plus
-significatives et de mesurer leur influence sur la solidité financière
-des assureurs. La résolution de cette problématique reposera sur la
-mobilisation d'outils économétriques appliqués à des données
-financières, macroéconomiques et à des indicateurs de solvabilité
-propres au secteur de l'assurance. Cette étude permettra notamment
-d'apprécier le degré de dépendance de la solvabilité des assureurs
-vis-à-vis des variables macro-financières. Elle constitue ainsi un outil
-d'aide à la décision pour les compagnies d'assurance, les décideurs
-publics ainsi que les autorités de régulation prudentielle.
+assureurs et assurés.
+
+La solvabilité d'une compagnie d'assurance désigne sa capacité à
+respecter ses engagements financiers à court, moyen et long terme,
+notamment en matière de règlement des sinistres et de prestations
+contractuelles. Elle constitue ainsi un indicateur fondamental de la
+solidité financière des assureurs. Toutefois, cette solvabilité demeure
+fortement influencée par l'environnement économique et financier. Par
+exemple, une hausse du taux d'inflation peut entraîner une augmentation
+mécanique du coût des sinistres, tandis qu'une variation des taux
+d'intérêt affecte à la fois les perspectives de rendement des placements
+financiers et la valorisation des obligations détenues par les
+compagnies d'assurance.
+
+Dans un contexte marqué par la volatilité des marchés financiers, les
+risques de perturbation des chaînes de valeur économiques, ainsi que le
+renforcement des exigences prudentielles, il devient essentiel de mieux
+comprendre les déterminants de la solvabilité des entreprises
+d'assurance. Cette problématique est d'autant plus importante que la
+stabilité et la pérennité du secteur assurantiel en dépendent
+directement.
+
+Le présent travail a donc pour objectif d'évaluer l'impact des variables
+financières et macroéconomiques sur la solvabilité des entreprises
+d'assurance en France. Plus précisément, il s'agira d'identifier les
+variables les plus significatives et de mesurer leur influence sur la
+solidité financière des assureurs. La résolution de cette problématique
+reposera sur la mobilisation d'outils économétriques appliqués à des
+données financières, macroéconomiques et à des indicateurs de
+solvabilité propres au secteur de l'assurance.
+
+Cette étude permettra notamment d'apprécier le degré de dépendance de la
+solvabilité des assureurs vis-à-vis des variables macro-financières.
+Elle constitue ainsi un outil d'aide à la décision pour les compagnies
+d'assurance, les décideurs publics ainsi que les autorités de régulation
+prudentielle.
 
 \section{Révue de la littérature}\label{ruxe9vue-de-la-littuxe9rature}
 
@@ -1008,15 +1025,311 @@ les relations d'équilibre de long terme. Ces éléments justifient le
 recours à une spécification ARDL qui permet d'intégrer simultanément
 dynamiques de court terme et relations de cointégration éventuelles.
 
+\subsection{II - Modèle ARDL}\label{ii---moduxe8le-ardl}
+
+Le modèle ARDL (Autoregressive Distributed Lag) est une approche
+économétrique puissante pour examiner les liens dynamiques entre des
+variables dans le temps. Contrairement aux méthodes classiques de
+cointégration, l'ARDL est particulièrement flexible car il permet
+d'analyser des séries ayant différents ordres d'intégration (\(I(0)\) ou
+\(I(1)\))
+
+\subsubsection{Formulation Mathématique du
+Modèle}\label{formulation-mathuxe9matique-du-moduxe8le}
+
+Le modèle fusionne une partie autorégressive (les valeurs passées du
+ratio) et des délais répartis (les valeurs actuelles et passées des
+marchés).L'équation structurelle est la suivante:
+
+\[ratio_{t} = \phi + \sum_{i=1}^{p} a_{i} ratio_{t-i} + \sum_{j=0}^{q} b_{j} X_{t-j} + \epsilon_{t}\]
+
+Où :
+
+\begin{itemize}
+\tightlist
+\item
+  \(ratio_{t}\) : La variable dépendante.
+\item
+  \(X_{t}\) : Les variables explicatives.
+\item
+  \(p, q\) : Les ordres de retard respectifs.
+\item
+  \(\epsilon_{t}\) : Le terme d'erreur (bruit blanc)
+\end{itemize}
+
+Pour estimer notre modèle nous procedons en 3 étapes :
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Variables explicatives et Stationnarité.
+\item
+  Recherche des retard optimaux et estimation du modèle
+\item
+  Diagnostic du modèle
+\end{enumerate}
+
+\subsubsection{Variables explicatives et
+Stationnarité}\label{variables-explicatives-et-stationnarituxe9}
+
+Pour ce modèle, les variables explicatives retenues se divisent en deux
+catégories :
+
+\begin{itemize}
+\tightlist
+\item
+  Les variables de marché : les indices boursiers S\&P 500 et CAC 40.
+\item
+  Les variables macroéconomiques : le taux de croissance du PIB,
+  l'Indice des Prix à la Consommation (IPC) et le taux d'intérêt de long
+  terme.
+\end{itemize}
+
+Afin de traiter les séries présentant une croissance de nature
+exponentielle, nous avons appliqué une transformation logarithmique aux
+indices boursiers (CAC 40, S\&P 500) ainsi qu'à l'IPC. Cette pratique,
+standard en économétrie financière, répond à un objectif analytique
+majeur : elle permet de linéariser ces séries et de convertir les
+variations absolues en variations relatives. Ainsi, les coefficients
+estimés du modèle s'interpréteront directement comme des élasticités,
+mesurant l'impact d'une variation de \(1 \%\) d'un indice de marché ou
+des prix sur le ratio de solvabilité.
+
+Comme souligné précédemment, la validité du test de cointégration aux
+bornes de l'approche ARDL repose sur l'hypothèse stricte qu'aucune série
+n'est intégrée d'ordre 2, soit \(I(2)\), ou supérieur, ce qui rendrait
+la méthode caduque. L'évaluation de l'ordre d'intégration de chaque
+variable a donc été menée rigoureusement en suivant la procédure
+séquentielle du test de Dickey-Fuller Augmenté (ADF) et du test de KPSS,
+avec une méthodologie identique à celle détaillée dans la section
+précédente.
+
+À l'issue de ces tests de racine unitaire, les résultats suivants se
+dégagent :
+
+\begin{itemize}
+\tightlist
+\item
+  Variables \(I(0)\) : Le ratio de solvabilité et le taux de croissance
+  du PIB sont stationnaires en niveau.
+\item
+  Variables \(I(1)\) : Les logarithmes des variables de marché (CAC 40,
+  S\&P 500) et de l'inflation (IPC) présentent une racine unitaire en
+  niveau, mais deviennent stationnaires après un passage en différence
+  première.
+\item
+  Traitement de la variable \(I(2)\) : Le test a révélé que le taux
+  d'intérêt de long terme est intégré d'ordre 2. Pour l'introduire de
+  manière valide dans le modèle sans violer les hypothèses de l'ARDL,
+  cette série a été préalablement différenciée une fois. La série
+  résultante (la variation du taux d'intérêt) est alors \(I(1)\).
+\end{itemize}
+
+Cette coexistence de variables explicatives intégrées d'ordres mixtes,
+\(I(0)\) et \(I(1)\), justifie pleinement le recours et la pertinence de
+la modélisation ARDL pour notre étude.
+
+\subsubsection{Recherche des retard optimaux et estimation du
+modèle}\label{recherche-des-retard-optimaux-et-estimation-du-moduxe8le}
+
+\paragraph{Retards optimaux}\label{retards-optimaux}
+
+\begin{longtable}[t]{rrrrrr}
+\caption{\label{tab:estimation_modele}Retards optimaux sélectionnés}\\
+\toprule
+ratio & l\_ipc & taux\_pib & d\_taux\_l & l\_sp & l\_cac\\
+\midrule
+2 & 3 & 0 & 1 & 0 & 0\\
+\bottomrule
+\end{longtable}
+
+Afin d'optimiser la précision de l'estimation, le nombre idéal de
+retards a été fixé automatiquement en s'appuyant sur des critères
+d'information. Notre choix s'est spécifiquement porté sur le critère de
+Schwarz, ou critère d'information bayésien (BIC). Contrairement au
+critère d'Akaike (AIC), le BIC pénalise plus fortement la complexité du
+modèle (le nombre de paramètres estimés), ce qui permet de privilégier
+une spécification plus stricte et parcimonieuse, limitant ainsi le
+risque de surapprentissage.
+
+L'algorithme d'optimisation a convergé vers la structure optimale
+suivante : un modèle \(\text{ARDL}(2, 3, 0, 1, 0, 0)\). L'équation
+correspondante peut se formaliser ainsi :
+
+\[\begin{aligned}
+\text{ratio}_t = \alpha_0 & + \gamma_1 \text{ratio}_{t-1} + \gamma_2 \text{ratio}_{t-2} \\
+& + \beta_{1,0} l\_ipc_t + \beta_{1,1} l\_ipc_{t-1} + \beta_{1,2} l\_ipc_{t-2} + \beta_{1,3} l\_ipc_{t-3} \\
+& + \beta_{2,0} \text{taux\_pib}_t + \beta_{3,0} d\_taux\_l_t + \beta_{3,1} d\_taux\_l_{t-1} \\
+& + \beta_{4,0} l\_sp_t + \beta_{5,0} l\_cac_t + \epsilon_t
+\end{aligned}\]
+
+\paragraph{Test des bornes
+(cointégration)}\label{test-des-bornes-cointuxe9gration}
+
+\begin{verbatim}
+
+    Bounds F-test (Wald) for no cointegration
+
+data:  d(ratio) ~ L(ratio, 1) + L(l_ipc, 1) + taux_pib + L(d_taux_l,     1) + l_sp + l_cac + d(L(ratio, 1)) + d(l_ipc) + d(L(l_ipc,     1)) + d(L(l_ipc, 2)) + d(d_taux_l)
+F = 8.0944, p-value = 1e-06
+alternative hypothesis: Possible cointegration
+null values:
+   k    T 
+   5 1000 
+\end{verbatim}
+
+\textbf{Interprétation des résultats : Cointégration}
+
+La première étape de l'analyse consiste à vérifier l'existence d'une
+relation d'équilibre de long terme entre le ratio de solvabilité et ses
+déterminants via le test aux bornes (Bounds F-test). La statistique de
+Fisher obtenue est de 8.09 avec une p-value de 0. Ce résultat, largement
+inférieur au seuil de \(5 \%\), nous permet de rejeter l'hypothèse nulle
+d'absence de cointégration. Il existe donc une relation stable et non
+fallacieuse entre ces variables sur le long terme, ce qui valide
+l'utilisation du modèle ARDL pour analyser la dynamique du ratio.
+
+\paragraph{Coefficients de long terme}\label{coefficients-de-long-terme}
+
+\begin{verbatim}
+         Term    Estimate Std. Error   t value     Pr(>|t|)
+1 (Intercept)  4.17083425 1.14619512  3.638852 0.0016339399
+2       l_ipc -0.49536062 0.38120351 -1.299465 0.2085644204
+3    taux_pib -0.41451004 0.28801957 -1.439173 0.1655694822
+4    d_taux_l  0.07817369 0.04483171  1.743714 0.0965614870
+5        l_sp  0.45504111 0.11565555  3.934451 0.0008200249
+6       l_cac -0.38493608 0.17086842 -2.252822 0.0356567527
+\end{verbatim}
+
+\textbf{Interprétation des résultats : Relation de Long Terme}
+
+log(S\&P 500) et log(CAC 40) ont des coefficients significatif au seuil
+de \(5\%\). La variation du taux long terme est marginalement
+significatif au seuil de 10\% (\(t = 1.74\), \(p = 0.097\)). On peut
+donc dire qu'une appréciation de 1\% de l'indice américain est associée
+à une hausse de 0.46 point du ratio de solvabilité à long terme.
+
+log(IPC) et Taux PIB sont non significativent. Cela indiquent que ces
+variables macroéconomiques n'exercent pas d'influence statistiquement
+détectable sur le ratio de solvabilité à long terme, une fois les effets
+de marché contrôlés.
+
+Le ratio de solvabilité des sociétés d'assurances est structurellement
+lié aux dynamiques des marchés actions. La diversification géographique
+apparaît comme un facteur clé : l'exposition au marché américain
+renforce la solvabilité, tandis qu'une concentration sur le marché
+européen constitue un facteur de vulnérabilité. Ce résultat plaide pour
+une gestion prudentielle attentive à la composition géographique des
+portefeuilles.
+
+\paragraph{Dynamique de court terme}\label{dynamique-de-court-terme}
+
+Pour estimer la dynamique de court terme, on réecrit le modèle sous la
+forme de correction d'erreur. L'estimation du modèle sous sa forme non
+contrainte à correction d'erreur permet d'analyser la vitesse à laquelle
+le ratio de solvabilité s'ajuste après un choc exogène. Il s'agit d'un
+transformation algébrique de l'équation de base du modèle :
+
+\[\begin{aligned}
+\Delta \text{ratio}_t = \alpha_0 &+ \underbrace{\lambda \cdot \left[ \text{ratio}_{t-1} - \left( \beta_1 l\_ipc_{t-1} + \beta_2 \text{taux\_pib}_{t-1} + \beta_3 d\_taux\_l_{t-1} + \beta_4 l\_sp_{t-1} + \beta_5 l\_cac_{t-1} \right) \right]}_{\textbf{Force de Rappel (ECT}_{t-1}\textbf{)}} \\
+&+ \gamma_{1} \Delta \text{ratio}_{t-1} \\
+&+ \delta_{1,0} \Delta l\_ipc_t + \delta_{1,1} \Delta l\_ipc_{t-1} + \delta_{1,2} \Delta l\_ipc_{t-2} \\
+&+ \delta_{3,0} \Delta d\_taux\_l_t + \epsilon_t
+\end{aligned}\]
+
+\(\lambda\) est le coefficient d'ajustement : correspond au coefficient
+du Terme de Correction d'Erreur (ECT). Dans un modèle de cointégration,
+elle mesure la capacité de la variable dépendante (le ratio de
+solvabilité) à retourner vers son équilibre de long terme après un choc
+macroéconomique.D'un point de vue mathématique, elle indique quelle
+proportion de l'écart à l'équilibre constaté à la période \(t-1\) est
+résorbée à la période \(t\).
+
+Ce coefficient est estimé à \(\lambda = −1.44 \;(p < 0.001)\), étant
+significatif au seuil de 1\%. La négativité du coefficient confirme
+l'existence d'une relation de cointégration entre le ratio de
+solvabilité et les variables macroéconomiques.La valeur absolue
+supérieure à l'unité traduit une dynamique de convergence oscillatoire :
+le système sur-corrige les écarts à l'équilibre d'un trimestre à
+l'autre. Ce résultat est cohérent avec la forte volatilité observée sur
+le graphique du ratio, notamment lors de la période 2019-2022, où les
+mesures de sauvegarde et la reprise des marchés ont provoqué des
+ajustements brutaux et rapides de la solvabilité globale du marché.
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-31-1} \end{flushleft}
+
+\paragraph{Diagnostic et limites du
+modèle}\label{diagnostic-et-limites-du-moduxe8le}
+
+\begin{enumerate}
+\def\labelenumi{(\roman{enumi})}
+\tightlist
+\item
+  Diagnostic des résidus
+\end{enumerate}
+
+La validité des inférences statistiques repose sur le respect des
+hypothèses fondamentales du modèle de régression. Trois batteries de
+tests ont été conduites pour vérifier la qualité des résidus.
+
+Test d'autocorrélation (Breusch-Godfrey) : la statistique LM = 9.47
+associée à une p-value de 0.050 ne permet pas de rejeter l'hypothèse
+nulle d'absence d'autocorrélation au seuil de 5\%. La structure de
+retards retenue capture donc correctement la dynamique temporelle des
+données, garantissant la validité des écarts-types estimés.
+
+Test de normalité (Jarque-Bera) : la statistique χ² = 2.04 (p-value =
+0.36) conduit au non-rejet de l'hypothèse de normalité des résidus. Ce
+résultat assure la validité des tests de Student et de Fisher, même sur
+un échantillon de taille modeste.
+
+Tests de stabilité structurelle (CUSUM et CUSUM²) : les sommes cumulées
+des résidus récursifs demeurent à l'intérieur des bandes de confiance à
+5\% sur l'ensemble de la période d'estimation. Les coefficients du
+modèle sont donc stables dans le temps, confirmant l'absence de rupture
+structurelle.
+
+\begin{enumerate}
+\def\labelenumi{(\roman{enumi})}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Limites du modèles
+\end{enumerate}
+
+Malgré la robustesse des diagnostics, plusieurs limites méthodologiques
+doivent être soulignées.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  Contrainte d'échantillon : avec seulement 35 observations
+  trimestrielles, le modèle souffre d'une faible puissance statistique.
+  Cette taille limite le nombre de variables explicatives et de retards
+  pouvant être introduits sans surparamétrage
+\item
+  Agrégation sectorielle : l'utilisation d'un ratio de solvabilité moyen
+  masque l'hétérogénéité des institutions. Les dynamiques d'ajustement
+  peuvent différer significativement entre assureurs, banques et autres
+  acteurs financiers.
+\item
+  Période d'estimation atypique : l'échantillon inclut des épisodes de
+  stress majeurs (crise Covid-19, choc inflationniste 2022-2023) qui
+  peuvent influencer de manière disproportionnée les coefficients
+  estimés. La généralisation des résultats à des périodes plus stables
+  requiert une certaine prudence.
+\end{enumerate}
+
 \section{Conclusion}\label{conclusion}
 
 \section{Annexes}\label{annexes}
 
 \subsubsection{Analyse descriptive}\label{analyse-descriptive}
 
-\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-28-1} \end{flushleft}
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-32-1} \end{flushleft}
 
-\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-30-1} \end{flushleft}
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-34-1} \end{flushleft}
 
 \subsubsection{Les indices boursiers.}\label{les-indices-boursiers.}
 
@@ -1037,7 +1350,7 @@ des marchés financiers au sein de la zone euro. Le graphique présenté
 ci-dessous illustre l'évolution des valeurs maximales et minimales de
 cet indice deouis \(2015\) jusqu'en \(2025\).
 
-\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-34-1} \end{flushleft}
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-38-1} \end{flushleft}
 
 Ces indices évoluent de manière globalement parallèle, suivant une
 tendance générale à la hausse. Néanmoins, une chute marquée est observée
@@ -1060,7 +1373,7 @@ le graphique ci-dessous, permet d'analyser la volatilité du marché ainsi
 que l'impact des événements macroéconomiques et géopolitiques sur les
 marchés financiers américains
 
-\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-35-1} \end{flushleft}
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-39-1} \end{flushleft}
 
 Le S\&P 500 connaît une tendence croissance sur toute la période avec
 également une pertubation en mars 2020 due à la pandémie de OVID-19.
@@ -1077,7 +1390,7 @@ importantes et les plus activement négociées sur Euronext Paris. Le
 graphique ci-après illustre l'évolution de ses valeurs maximales et
 minimales au fil du temps.
 
-\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-38-1} \end{flushleft}
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-42-1} \end{flushleft}
 
 Comme pour l'EURO STOXX, les valeurs de l'indice CAC 40 évoluent de
 manière parallèle et croissante avec également une chutte marqué en mars
@@ -1092,7 +1405,7 @@ capitalisation boursière flottante. C'est l'équivalent allemend du CAC
 40. Le graphique ci-après représente les variation de cet indice sur la
 période \(2015-2025.\)
 
-\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-39-1} \end{flushleft}
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/unnamed-chunk-43-1} \end{flushleft}
 
 \section{Modélisation}\label{moduxe9lisation-1}
 
@@ -1101,7 +1414,7 @@ différence}\label{ii---ruxe9gression-en-diffuxe9rence}
 
 \begin{table}[H]
 \centering\centering
-\caption{\label{tab:unnamed-chunk-40}Résultats de la régression du ratio de solvabilité - Vie}
+\caption{\label{tab:unnamed-chunk-44}Résultats de la régression du ratio de solvabilité - Vie}
 \centering
 \begin{tabular}[t]{lcccc}
 \toprule
@@ -1125,7 +1438,7 @@ R2 Adj. & \num{-0.000} &  &  & \\
 \end{table}
 
 \begin{longtable}[t]{llrrl}
-\caption{\label{tab:unnamed-chunk-41}Tests sur les résidus modèle ratio - Vie}\\
+\caption{\label{tab:unnamed-chunk-45}Tests sur les résidus modèle ratio - Vie}\\
 \toprule
  & Test & Statistique & P\_value & Verdict\\
 \midrule
@@ -1137,7 +1450,7 @@ W & Normalité (Shapiro-Wilk) & 0.9649 & 0.3184 & Hypothèse validée\\
 \end{longtable}
 
 \begin{longtable}[t]{lrrl}
-\caption{\label{tab:unnamed-chunk-42}Tests diagnostiques - Fonds Propres Vie}\\
+\caption{\label{tab:unnamed-chunk-46}Tests diagnostiques - Fonds Propres Vie}\\
 \toprule
 Test & Statistique & p.value & Hypothèse\_nulle\\
 \midrule
@@ -1148,7 +1461,7 @@ Jarque-Bera & 0.1760 & 0.9158 & Normalité des résidus\\
 \end{longtable}
 
 \begin{longtable}[t]{llr}
-\caption{\label{tab:unnamed-chunk-42}Facteurs d'inflation de la variance (VIF) - Fonds Propres Vie}\\
+\caption{\label{tab:unnamed-chunk-46}Facteurs d'inflation de la variance (VIF) - Fonds Propres Vie}\\
 \toprule
  & Variable & VIF\\
 \midrule
@@ -1160,7 +1473,7 @@ dplyr::lag(diff\_ipc, 4) & dplyr::lag(diff\_ipc, 4) & 1.281\\
 \end{longtable}
 
 \begin{longtable}[t]{lrrl}
-\caption{\label{tab:unnamed-chunk-43}Tests diagnostiques - SCR Vie}\\
+\caption{\label{tab:unnamed-chunk-47}Tests diagnostiques - SCR Vie}\\
 \toprule
 Test & Statistique & p.value & Hypothèse\_nulle\\
 \midrule
@@ -1171,7 +1484,7 @@ Jarque-Bera & 0.1760 & 0.9158 & Normalité des résidus\\
 \end{longtable}
 
 \begin{longtable}[t]{llr}
-\caption{\label{tab:unnamed-chunk-43}Facteurs d'inflation de la variance (VIF) - SCR Vie}\\
+\caption{\label{tab:unnamed-chunk-47}Facteurs d'inflation de la variance (VIF) - SCR Vie}\\
 \toprule
  & Variable & VIF\\
 \midrule
@@ -1182,7 +1495,7 @@ dplyr::lag(diff\_taux\_long, 1) & dplyr::lag(diff\_taux\_long, 1) & 1.212\\
 \end{longtable}
 
 \begin{longtable}[t]{lrrl}
-\caption{\label{tab:unnamed-chunk-44}Tests diagnostiques - Ratio de solvabilité Vie}\\
+\caption{\label{tab:unnamed-chunk-48}Tests diagnostiques - Ratio de solvabilité Vie}\\
 \toprule
 Test & Statistique & p.value & Hypothèse\_nulle\\
 \midrule
@@ -1193,7 +1506,7 @@ Jarque-Bera & 4.2546 & 0.1192 & Normalité des résidus\\
 \end{longtable}
 
 \begin{longtable}[t]{llr}
-\caption{\label{tab:unnamed-chunk-44}Facteurs d'inflation de la variance (VIF) - Ratio Vie}\\
+\caption{\label{tab:unnamed-chunk-48}Facteurs d'inflation de la variance (VIF) - Ratio Vie}\\
 \toprule
  & Variable & VIF\\
 \midrule
@@ -1203,7 +1516,7 @@ dplyr::lag(rendement\_sp500, 3) & dplyr::lag(rendement\_sp500, 3) & 1\\
 \end{longtable}
 
 \begin{longtable}[t]{lrrl}
-\caption{\label{tab:unnamed-chunk-45}Tests diagnostiques - Fonds propres Non-Vie}\\
+\caption{\label{tab:unnamed-chunk-49}Tests diagnostiques - Fonds propres Non-Vie}\\
 \toprule
 Test & Statistique & p.value & Hypothèse\_nulle\\
 \midrule
@@ -1214,7 +1527,7 @@ Jarque-Bera & 3.7717 & 0.1517 & Normalité des résidus\\
 \end{longtable}
 
 \begin{longtable}[t]{llr}
-\caption{\label{tab:unnamed-chunk-45}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
+\caption{\label{tab:unnamed-chunk-49}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
 \toprule
  & Variable & VIF\\
 \midrule
@@ -1226,7 +1539,7 @@ dplyr::lag(diff\_taux\_long, 3) & dplyr::lag(diff\_taux\_long, 3) & 1.325\\
 \end{longtable}
 
 \begin{longtable}[t]{lrrl}
-\caption{\label{tab:unnamed-chunk-46}Tests diagnostiques - Fonds propres Non-Vie}\\
+\caption{\label{tab:unnamed-chunk-50}Tests diagnostiques - Fonds propres Non-Vie}\\
 \toprule
 Test & Statistique & p.value & Hypothèse\_nulle\\
 \midrule
@@ -1237,7 +1550,7 @@ Jarque-Bera & 18.0553 & 0.0001 & Normalité des résidus\\
 \end{longtable}
 
 \begin{longtable}[t]{llr}
-\caption{\label{tab:unnamed-chunk-46}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
+\caption{\label{tab:unnamed-chunk-50}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
 \toprule
  & Variable & VIF\\
 \midrule
@@ -1247,7 +1560,7 @@ dplyr::lag(diff\_taux\_court, 3) & dplyr::lag(diff\_taux\_court, 3) & 1.012\\
 \end{longtable}
 
 \begin{longtable}[t]{lrrl}
-\caption{\label{tab:unnamed-chunk-47}Tests diagnostiques - Fonds propres Non-Vie}\\
+\caption{\label{tab:unnamed-chunk-51}Tests diagnostiques - Fonds propres Non-Vie}\\
 \toprule
 Test & Statistique & p.value & Hypothèse\_nulle\\
 \midrule
@@ -1258,7 +1571,7 @@ Jarque-Bera & 101.6076 & 0.0000 & Normalité des résidus\\
 \end{longtable}
 
 \begin{longtable}[t]{llr}
-\caption{\label{tab:unnamed-chunk-47}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
+\caption{\label{tab:unnamed-chunk-51}Facteurs d'inflation de la variance (VIF) - Fond propres Non-Vie}\\
 \toprule
  & Variable & VIF\\
 \midrule
@@ -1267,5 +1580,375 @@ dplyr::lag(diff\_taux\_court, 3) & dplyr::lag(diff\_taux\_court, 3) & 1.314\\
 \cellcolor{gray!10}{dplyr::lag(diff\_taux\_long, 3)} & \cellcolor{gray!10}{dplyr::lag(diff\_taux\_long, 3)} & \cellcolor{gray!10}{1.321}\\
 \bottomrule
 \end{longtable}
+
+\subsection{II - Modèle ARDL}\label{ii---moduxe8le-ardl-1}
+
+\begin{longtable}[t]{lrrrr}
+\caption{\label{tab:unnamed-chunk-52}Modèle à Correction d'Erreur (Dynamique de Court Terme)}\\
+\toprule
+ & Estimate & Std. Error & t value & P value\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{5.98835} & \cellcolor{gray!10}{1.65040} & \cellcolor{gray!10}{3.62843} & \cellcolor{gray!10}{0.00167}\\
+L(ratio, 1) & -1.43577 & 0.22933 & -6.26078 & 0.00000\\
+\cellcolor{gray!10}{L(l\_ipc, 1)} & \cellcolor{gray!10}{-0.71122} & \cellcolor{gray!10}{0.51071} & \cellcolor{gray!10}{-1.39260} & \cellcolor{gray!10}{0.17903}\\
+taux\_pib & -0.59514 & 0.42662 & -1.39501 & 0.17831\\
+\cellcolor{gray!10}{L(d\_taux\_l, 1)} & \cellcolor{gray!10}{0.11224} & \cellcolor{gray!10}{0.06702} & \cellcolor{gray!10}{1.67463} & \cellcolor{gray!10}{0.10957}\\
+\addlinespace
+l\_sp & 0.65333 & 0.16876 & 3.87144 & 0.00095\\
+\cellcolor{gray!10}{l\_cac} & \cellcolor{gray!10}{-0.55268} & \cellcolor{gray!10}{0.26657} & \cellcolor{gray!10}{-2.07330} & \cellcolor{gray!10}{0.05128}\\
+d(L(ratio, 1)) & 0.36560 & 0.15397 & 2.37443 & 0.02770\\
+\cellcolor{gray!10}{d(l\_ipc)} & \cellcolor{gray!10}{6.96610} & \cellcolor{gray!10}{3.24159} & \cellcolor{gray!10}{2.14898} & \cellcolor{gray!10}{0.04406}\\
+d(L(l\_ipc, 1)) & -1.15610 & 3.03671 & -0.38071 & 0.70743\\
+\addlinespace
+\cellcolor{gray!10}{d(L(l\_ipc, 2))} & \cellcolor{gray!10}{13.40692} & \cellcolor{gray!10}{3.48527} & \cellcolor{gray!10}{3.84673} & \cellcolor{gray!10}{0.00101}\\
+d(d\_taux\_l) & 0.02890 & 0.04920 & 0.58739 & 0.56352\\
+\bottomrule
+\end{longtable}
+
+\begin{verbatim}
+## R-squared: 0.7576 | Adjusted R-squared: 0.6243
+\end{verbatim}
+
+\textbf{Test d'absence d'autocorrélation des résidus :}
+
+\begin{verbatim}
+
+    Breusch-Godfrey test for serial correlation of order up to 4
+
+data:  final_model
+LM test = 9.4673, df = 4, p-value = 0.05042
+\end{verbatim}
+
+\textbf{Test de Normalité (Jarque-Bera)}
+
+\begin{verbatim}
+
+    Jarque Bera Test
+
+data:  residus
+X-squared = 2.0426, df = 2, p-value = 0.3601
+\end{verbatim}
+
+\textbf{Test de stabilité CUSUM et CUSUM Squared :} \textbackslash{}
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/test 4 CUSUM-1} \end{flushleft}
+
+\textbf{Diagnoctic visuel}
+
+\begin{flushleft}\includegraphics{Stat_desc_files/figure-latex/diagnostic-1} \end{flushleft}
+
+\section{Lecture et analyse des rapports annuels des compagnies
+d'assurance}\label{lecture-et-analyse-des-rapports-annuels-des-compagnies-dassurance}
+
+Dans cette partie, nous avons parcouru un ensemble de rapports sur la
+solvabilité et la situation financière de plusieurs compagnies
+d'assurance entre 2019 et 2025 afin d'approfondir la compréhension des
+mécanismes par lesquels les variables macroéconomiques et
+macro-financières affectent la solvabilité des assureurs. Nous nous
+sommes concentrés uniquement sur les parties des rapports annuels qui
+traitent de la solvabilité en nous focalisant sur :
+
+\begin{itemize}
+\tightlist
+\item
+  la variation des SCR, des fonds propres et des ratios de solvabilité ;
+\item
+  la variation des variables macro-financières.
+\end{itemize}
+
+Dans un second temps, nous avons mis ces évolutions en relation avec la
+chronologie macroéconomique établie précédemment afin de mieux
+comprendre le lien entre la conjoncture économique et la situation des
+assureurs. Cette comparaison montre plusieurs éléments importants.
+D'abord, l'inflation pénalise particulièrement les assureurs non-vie,
+car elle augmente le coût des sinistres, des réparations et, plus
+généralement, des charges techniques. Elle réduit donc leurs marges,
+pèse sur le résultat net et peut aussi conduire à renforcer les
+provisions. Les assureurs vie sont également touchés, mais de façon
+différente : l'inflation diminue le rendement réel des placements et
+rend certains produits d'épargne concurrents plus attractifs, ce qui
+peut freiner la collecte et réduire la rentabilité des contrats.
+
+Par ailleurs, cette analyse confirme que les taux d'intérêt jouent un
+rôle central dans la solvabilité des assureurs. Lorsque les taux restent
+bas, les placements obligataires rapportent moins et les engagements de
+long terme deviennent plus contraignants, surtout en assurance vie. À
+l'inverse, la remontée des taux peut alléger certaines charges
+d'actualisation, mais elle peut aussi entraîner des pertes de valeur sur
+les actifs détenus. Enfin, la volatilité des marchés financiers a elle
+aussi un impact important, car elle agit à la fois sur la valeur des
+actifs, sur les fonds propres et sur le capital requis. Ainsi, les
+rapports annuels confirment que la solvabilité des assureurs dépend
+fortement de l'environnement macro-financier, mais aussi de leur
+exposition aux différents risques et de leur capacité à absorber les
+chocs.
+
+Ces éléments permettent d'apporter un premier éclairage sur la
+problématique étudiée et d'orienter l'analyse statistique qui sera menée
+par la suite, afin de faciliter l'interprétation des résultats.
+
+\section{Détail des variables
+qualitatives}\label{duxe9tail-des-variables-qualitatives}
+
+\subsection{Nature}\label{nature}
+
+Cette variable décrit l'activité d'assurance de la société :
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Non Vie} : assurance dommages, automobile, habitation, santé,
+  etc.
+\item
+  \textbf{Vie/Capitalisation} : assurance vie, épargne et
+  capitalisation.
+\item
+  \textbf{Mixte} : compagnie présente à la fois sur les métiers Vie et
+  Non-Vie.
+\item
+  \textbf{Réassurance} : activité de réassurance.
+\item
+  \textbf{FRPS} : fonds de retraite professionnelle supplémentaire.
+\end{itemize}
+
+Dans notre analyse, nous nous intéresserons seulement aux natures
+\textbf{Non-Vie} et \textbf{Mixte}.
+
+\subsection{Famille}\label{famille}
+
+Cette variable classe les assureurs selon leur modèle d'organisation :
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Mutualiste} : assureur détenu par ses sociétaires, sans
+  actionnaires, dont les résultats sont principalement réinvestis au
+  service des assurés.
+\item
+  \textbf{Traditionnel} : assureur organisé en société de capitaux,
+  détenu par des actionnaires et orienté vers la rentabilité financière.
+\item
+  \textbf{Bancassureur} : assureur intégré à un groupe bancaire, qui
+  distribue ses produits principalement via le réseau bancaire.
+\end{itemize}
+
+Cette distinction est utile pour comparer les profils de solvabilité,
+car les contraintes financières et les sources de financement peuvent
+différer selon le modèle.
+
+\subsection{Remise}\label{remise}
+
+Cette variable indique la périodicité de la donnée :
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{T1, T2, T3, T4} : remises trimestrielles ;
+\item
+  \textbf{A} : remise annuelle.
+\end{itemize}
+
+Dans le jeu de données, certaines années ne contiennent pas toutes les
+remises, ce qui traduit simplement des différences de disponibilité des
+données selon les périodes.
+
+\section{Les formules du SCR}\label{les-formules-du-scr}
+
+Le SCR (\emph{Solvency Capital Requirement}) représente l'exigence en
+fonds propres permettant à un assureur de faire face à ses risques sur
+un horizon d'un an avec une probabilité de 99,5 \%, soit l'équivalent
+d'une faillite théorique tous les 200 ans. Les assureurs peuvent
+utiliser la formule standard définie par l'EIOPA, un modèle interne
+propre à leur structure de risque, ou une combinaison des deux (modèle
+partiel). Le SCR se décompose en trois termes :
+
+\[SCR = BSCR + SCR_{op} - Adj\]
+
+Le BSCR (\emph{Basic SCR}) agrège les SCR par type de risque à l'aide
+d'une matrice de corrélation. L'Adj représente la capacité d'absorption
+des pertes par les provisions techniques et les impôts différés. Chaque
+SCR élémentaire correspond à la perte de fonds propres résultant d'un
+choc instantané calibré par l'EIOPA.
+
+\[BSCR = \sqrt{\sum_{i,j} Corr_{i,j} \cdot SCR_i \cdot SCR_j} + SCR_{intangibles}\]
+
+Les coefficients \(Corr_{i,j}\) de la formule du BSCR sont issus de la
+matrice suivante :
+
+\begin{longtable}[]{@{}lrrrrr@{}}
+\toprule\noalign{}
+& Marché & Défaut & Sous. Vie & Sous. Santé & Sous. Non-vie \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Marché & 1 & 0,25 & 0,25 & 0,25 & 0,25 \\
+Défaut & 0,25 & 1 & 0,25 & 0,25 & 0,5 \\
+Souscription Vie & 0,25 & 0,25 & 1 & 0,25 & 0 \\
+Souscription Santé & 0,25 & 0,25 & 0,25 & 1 & 0 \\
+Souscription Non-vie & 0,25 & 0,5 & 0 & 0 & 1 \\
+\end{longtable}
+
+\subsection{1. Risque de souscription}\label{risque-de-souscription}
+
+Le risque de souscription couvre l'incertitude sur les résultats des
+contrats, due notamment à des erreurs de tarification, de
+provisionnement ou à la survenance d'événements extrêmes. Il se divise
+en trois modules distincts, chacun calculé par agrégation matricielle de
+ses propres sous-risques :
+
+\[SCR_{vie} = \sqrt{\sum_{(i,j)} Corr^{Vie}_{i,j} \cdot SCR_i \cdot SCR_j}\]
+
+\[SCR_{sant\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{Sant\acute{e}}_{i,j} \cdot SCR_i \cdot SCR_j}\]
+
+\[SCR_{non-vie} = \sqrt{\sum_{(i,j)} Corr^{NV}_{i,j} \cdot SCR_i \cdot SCR_j}\]
+
+La matrice \(Corr^{Vie}\) pour le risque vie comprend sept sous-risques.
+Les corrélations négatives, par exemple entre mortalité et longévité
+(−0,25), reflètent leur nature opposée : une hausse de la mortalité est
+défavorable pour les contrats décès mais favorable pour les rentes
+viagères, ce qui justifie une compensation partielle dans le calcul du
+SCR.
+
+\subsubsection{Matrice des sous-risques
+vie}\label{matrice-des-sous-risques-vie}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.0968}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1290}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1290}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1290}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1290}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1290}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1290}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1290}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Mortalité
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Longévité
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Invalidité
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Dépenses
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Révision
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Cessation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Catastrophe
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Mortalité & 1 & -0,25 & 0,25 & 0,25 & 0 & 0 & 0,25 \\
+Longévité & -0,25 & 1 & 0 & 0,25 & 0,25 & 0,25 & 0 \\
+Invalidité & 0,25 & 0 & 1 & 0,5 & 0 & 0 & 0,25 \\
+Dépenses & 0,25 & 0,25 & 0,5 & 1 & 0,5 & 0,5 & 0,25 \\
+Révision & 0 & 0,25 & 0 & 0,5 & 1 & 0 & 0 \\
+Cessation & 0 & 0,25 & 0 & 0,5 & 0 & 1 & 0,25 \\
+Catastrophe & 0,25 & 0 & 0,25 & 0,25 & 0 & 0,25 & 1 \\
+\end{longtable}
+
+\subsection{2. Risque de marché}\label{risque-de-marchuxe9}
+
+Le risque de marché mesure la sensibilité de l'assureur aux évolutions
+des marchés financiers (taux, actions, immobilier, devises, spreads). Il
+est calculé par agrégation matricielle de six sous-risques :
+
+\[SCR_{march\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{March\acute{e}}_{i,j} \cdot SCR_i \cdot SCR_j}\]
+
+\begin{longtable}[]{@{}lrrrrrr@{}}
+\toprule\noalign{}
+& Taux & Actions & Immobilier & Spread & Concentration & Devise \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Taux d'intérêt & 1 & A & A & A & 0 & 0,25 \\
+Actions & A & 1 & 0,75 & 0,75 & 0 & 0,25 \\
+Immobilier & A & 0,75 & 1 & 0,5 & 0 & 0,25 \\
+Spread & A & 0,75 & 0,5 & 1 & 0 & 0,25 \\
+Concentration & 0 & 0 & 0 & 0 & 1 & 0 \\
+Devise & 0,25 & 0,25 & 0,25 & 0,25 & 0 & 1 \\
+\end{longtable}
+
+Le paramètre \(A\) vaut 0 si \(SCR_{taux}\) est issu d'un choc à la
+hausse, 0,5 sinon.
+
+\subsubsection{Détail des formules et chocs par
+sous-risque}\label{duxe9tail-des-formules-et-chocs-par-sous-risque}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Sous-risque
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Formule / Choc
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Actions & \(SCR_{actions}\) dépend du choc sur les actions selon leur
+nature, avec un niveau différent pour les actions cotées, non cotées et
+l'infrastructure éligible. Un ajustement symétrique vient moduler ce
+choc. \\
+Spread & Hausse des spreads appliquée aux obligations, prêts,
+titrisations et dérivés de crédit. L'intensité du choc dépend de la
+notation de l'émetteur et de la duration de la créance. \\
+Taux d'intérêt & Chocs de hausse et de baisse des taux, plus élevés à
+court terme puis décroissants linéairement avec l'échéance. Les valeurs
+intermédiaires sont obtenues par interpolation. \\
+Change & Choc de ±25 \% sur les devises étrangères par rapport à la
+monnaie locale. Le SCR retenu correspond au scénario le plus défavorable
+entre hausse et baisse. \\
+Immobilier & Choc de −25 \% sur la valeur de marché de l'ensemble des
+actifs immobiliers détenus. \\
+Concentration & Mesure du risque lié à une exposition trop importante
+sur une même signature. Le calcul dépend du ratio de solvabilité de
+l'entreprise et de la qualité de crédit des contreparties. \\
+\end{longtable}
+
+\subsection{3. Risque de défaut de
+contrepartie}\label{risque-de-duxe9faut-de-contrepartie}
+
+Ce risque couvre la perte potentielle liée à la défaillance d'une
+contrepartie. Il se distingue du risque de spread, qui concerne la
+dégradation de la qualité de crédit des émetteurs de valeurs mobilières,
+et concerne exclusivement :
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Contrepartie
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Description
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Réassureurs & Défaut d'un réassureur sur ses engagements de couverture
+envers le cédant. C'est l'une des expositions les plus significatives
+pour les assureurs ayant fortement externalisé leur risque. \\
+Banques dépositaires & Défaut d'un établissement bancaire détenant les
+actifs en dépôt. Cela concerne directement la valeur liquidative du
+portefeuille d'investissements de l'assureur. \\
+Autres débiteurs & Intermédiaires d'assurance, preneurs, montants à
+recevoir au titre des créances sur contrats. Cela comprend aussi les
+débiteurs au titre des procédures de recours et subrogations. \\
+\end{longtable}
+
+Dans la matrice BSCR, le risque de défaut présente une corrélation de
+0,25 avec tous les autres modules, à l'exception de la souscription
+non-vie avec laquelle la corrélation est portée à 0,5, reflétant
+l'interdépendance entre la sinistralité et les défauts de réassureurs.
 
 \end{document}

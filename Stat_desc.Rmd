@@ -1,7 +1,7 @@
 ---
 output:
-  pdf_document: default
-  html_document: default
+  pdf_document:
+    latex_engine: xelatex
 ---
 
 
@@ -40,6 +40,9 @@ library(modelsummary)
 library(insee)
 library(car) 
 library(sandwich)
+library(ARDL)
+install.packages('tinytex')
+tinytex::install_tinytex()
 ```
 
 ```{r, include=FALSE}
@@ -1436,7 +1439,7 @@ Cette coexistence de variables explicatives intégrées d'ordres mixtes, $I(0)$ 
 ```{r}
 ### Ratio de solvabilité
 
-data_trim <- read.csv("trim_ajustees.csv")
+data_trim <- read.csv("trim_ajustées.csv")
 data_trim <- data_trim %>% mutate(nb = total_ajuste/Moyenne_Ajustee)
 data_trim_F <- data_trim%>%filter( Variable == "FONDS PROPRES")%>%
   mutate(
@@ -1472,14 +1475,6 @@ ipc <- ipc_trim%>%mutate(
   ))
 
 pib_brut <- read.csv("pib.csv")
-
-# Création de la table avec calcul du taux de croissance
-pib_brut <- pib_brut %>%
-  arrange(Annee, Remise) %>% # Sécurité pour le calcul du lag
-  mutate(
-    # Calcul du taux de croissance trimestriel (log-différence)
-    taux_pib =  log(pib) - log(dplyr::lag(pib, 1))
-  )pib_brut <- read.csv("pib.csv")
 
 # Création de la table avec calcul du taux de croissance
 pib_brut <- pib_brut %>%
