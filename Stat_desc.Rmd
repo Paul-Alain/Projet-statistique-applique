@@ -785,6 +785,8 @@ Où :
     \item $\epsilon_t$ est le terme d'erreur (bruit blanc) $\epsilon_t \sim N(0, \sigma^2)$.
 \end{itemize}
 
+Ce modèle repose sur les hypothèses classiques des MCO : linéarité de la relation, exogénéité des régresseurs, homoscédasticité et absence d'autocorrélation des résidus, et normalité de la distribution des erreurs. Ces hypothèses sont vérifiées empiriquement en fin de partie à l'aide des tests appropriés.
+
 ### 1) Agrégation et transformation des données
 
 Dans le cadre de cette modélisation, les données individuelles des assureurs et les variables macro-financières ont été agrégées par trimestre afin de ne conserver qu’une dimension temporelle. Cette agrégation permet d’obtenir une série synthétique reflétant l’évolution globale du secteur et de s'aligner sur les dates de reporting réglementaires du secteur. Ce choix méthodologique implique dans un premier temps de renoncer à l’analyse des effets individuels mais il est cohérent avec l’objectif de l’étude, centré sur la dynamique macroéconomique de la solvabilité.
@@ -1364,7 +1366,7 @@ modelsummary(
 Une hausse des taux d’intérêt de long terme améliore le ratio de solvabilité avec un retard de trois trimestres, probablement via l’augmentation des fonds propres et l’amélioration des revenus financiers. À l’inverse, les taux courts exercent un effet négatif sur le ratio de solvabilité. Ce résultat suggère qu’un relèvement des taux courts peut temporairement détériorer l’équilibre prudentiel des assureurs Non-Vie.
 
 Ces résultats doivent être interprétés avec prudence en raison de plusieurs limites économétriques. La taille réduite de l'échantillon restreint la puissance statistique des estimations et la corrélation entre certaines variables macro-financières peut générer des problèmes de multicolinéarité. 
-L'ensemble des modèles estimés satisfont les conditions de validité économétrique : les tests de Jarque-Bera, Breusch-Pagan et Ljung-Box ne rejettent pas la normalité des résidus, l'homoscédasticité et l'absence d'autocorrélation (cf. Annexe Tables). Néanmoins, compte tenu de la faible puissance de ces tests sur petit échantillon et de la sensibilité des p-values à la correction, l'estimateur de Newey-West a été appliqué à l'ensemble des modèles afin de garantir la robustesse des inférences.
+L'ensemble des modèles estimés satisfont les conditions de validité économétrique : les tests de Jarque-Bera, Breusch-Pagan et Ljung-Box ne rejettent pas la normalité des résidus, l'homoscédasticité et l'absence d'autocorrélation (cf. Annexe Tables). Néanmoins, compte tenu de la faible puissance de ces tests sur petit échantillon et de la sensibilité des p-values à la correction, l'estimateur de Newey-West a été appliqué à l'ensemble des modèles afin de garantir la robustesse des inférences. Par ailleurs, un biais d'endogénéité lié à l'omission de variables pertinentes ne peut être exclu. Les variables macro-financières retenues sont susceptibles d'être corrélées avec d'autres déterminants de la solvabilité non intégrés au modèle ce qui limite la validité de cette modélisation.
 
 Par ailleurs, cette approche en différences ne permet pas d'identifier les relations d'équilibre de long terme. Ces éléments justifient le recours à une spécification ARDL qui permet d'intégrer simultanément dynamiques de court terme et relations de cointégration éventuelles.
 
