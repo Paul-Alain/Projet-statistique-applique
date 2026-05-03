@@ -2022,7 +2022,7 @@ Cette variable indique la périodicité de la donnée :
 
 Dans le jeu de données, certaines années ne contiennent pas toutes les remises, ce qui traduit simplement des différences de disponibilité des données selon les périodes.
 
-# Synthèse SCR
+# Les formules du SCR
 
 Le SCR (*Solvency Capital Requirement*) représente l’exigence en fonds propres permettant à un assureur de faire face à ses risques sur un horizon d’un an avec une probabilité de 99,5 %, soit l’équivalent d’une faillite théorique tous les 200 ans. Les assureurs peuvent utiliser la formule standard définie par l’EIOPA, un modèle interne propre à leur structure de risque, ou une combinaison des deux (modèle partiel). Le SCR se décompose en trois termes :
 
