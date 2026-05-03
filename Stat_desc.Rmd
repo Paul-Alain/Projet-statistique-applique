@@ -1,12 +1,4 @@
----
-title: "Ce document est un  rapport de stat desc"
-author: "Groupe de travail"
-date: "`r Sys.Date()`"
-output: 
-  pdf_document: 
-    toc: true
-    number_sections: true
----
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -25,151 +17,43 @@ library(zoo)
 library(ggplot2)
 library(knitr)
 library(kableExtra)
-
-
+library(glue)
+library(scales)
+library(ggh4x)
+library(rlang)
+library(shiny)
+library(quantmod)
+library(tidyquant)
+library(lubridate)
+library(readr)
 ```
 
-\newpage
-
-# Exploration de la base de données
-
-```{r}
+```{r, include=FALSE}
 df <- readRDS("BASE_SCR_ENSAE_ANONYME.rds")
-
+df_orig<-df
 ```
 
-```{r include=FALSE}
-dim(df)
-```
+# Introduction
 
-La base de données utilisée contient 5 399 observations et 8 variables, réparties en 4 variables numériques et 4 variables qualitatives (chaînes de caractères).
-Dans cette section, nous présentons de manière détaillée chacune de ces variables.
+# Révue de la littérature
 
-## Variables numériques
+# Chronologie des évènements
 
-La base comprend les variables quantitatives suivantes :
+# Formule du calcul du SCR
 
-- SOCIETE :
-Identifiant numérique de la compagnie d’assurance. Il s’agit d’un entier compris entre $0$ et $270$.
+# Synthèse des rapports de conditions de solvabilité et financière des entreprise (SFCR)
 
-- FONDS PROPRES :
-Variable numérique exprimée en valeur entière (ordre de grandeur : milliards).
-Elle représente le montant des fonds propres détenus par la compagnie d’assurance.
-
-- SCR (Solvency Capital Requirement) :
-Variable numérique exprimée en valeur entière (ordre de grandeur : centaines de millions à milliards).
-Elle correspond au capital de solvabilité requis au sens de la réglementation Solvabilité II.
-
-- RATIO :
-Variable numérique exprimée sous forme d’un nombre réel arrondi au centième (ordre de grandeur : inférieur à 10).
-Elle correspond au ratio de solvabilité, défini comme le quotient entre les fonds propres et le SCR :
-
-$$RATIO=\frac{FONDS \text{ } PROPRES}{SCR}$$
-
-##  Variables non numériques
-
-La base comprend également les variables qualitatives suivantes :
-
-- Nature :
-Indique la nature de l’activité de la compagnie d’assurance.
-Elle prend les valeurs suivantes :
-FRPS,
-Mixte,
-Non Vie,
-Réassurance,
-Vie / Capitalisation
-
-- Famille :
-Identifie le type institutionnel de la compagnie d’assurance.
-Elle prend les valeurs :
-Bancassureur,
-Mutualiste,
-Traditionnel
-
-- Annee : Année d’observation des données.
-Elle prend les valeurs comprises entre 2016 et 2025.
-
-- Remise : Indique la périodicité de déclaration des données, soit annuelle, soit trimestrielle.
-
-Voici-joint un apercu de la base de données:
-
-```{r}
-
-kable(head(df, 5)
-      )
-
-```
-Les variables **SCR** et **fonds propres** présentent des ordres de grandeur très élevés. Nous avons donc appliqué une transformation logarithmique afin de réduire leur échelle et de faciliter l’analyse.
-
-# Traitement des données 
-
-Dans cette section, nous explorons la base complète, puis les données sont scindées afin d’obtenir une base annuelle et une base trimestrielle.
-
-## Valeurs manquantes
-
-```{r include=FALSE}
-## Checking of missing value
-
-
-# Nombre de valeurs manquantes par variable
-na_table <- data.frame(
-  Variable = names(df),
-  Nb_valeurs_manquantes = colSums(is.na(df))
-)
-
-kable(
-  na_table,
-  caption = "Nombre de valeurs manquantes par variable",
-  align = "l"
-)
-
-```
-```{r}
-library(knitr)
-
-kable(
-  df[!complete.cases(df), ],
-  caption = "Observations contenant au moins une valeur manquante"
-)
-
-```
-
-Il y a peu de valeurs manquantes dans la base de données : seules trois compagnies en présentent, et uniquement pour des données annuelles. Étant donné qu’il existe des valeurs trimestrielles pour ces variables, nous explorerons la possibilité d’imputer les valeurs manquantes à partir des données trimestrielles.
-
-Cependant, il est important de calculer les coefficients de variation pour ces sociétés afin d’évaluer s’il est raisonnable d’estimer les valeurs manquantes par la moyenne.
-
-```{r}
-## data filtering to keep only relevant societies
-vars <- c("FONDS PROPRES", "SCR", "RATIO","Remise")
-df_A_soc <- df %>%
-  filter(
-    Remise == "A",
-    SOCIETE %in% c(149, 190, 235)
-  )
-
-## CV of relevant variables
-cv_soc_detail <- df_A_soc %>%
-  group_by(SOCIETE) %>%
-  summarise(across(
-    all_of(vars),
-    ~ sd(., na.rm = TRUE) / mean(., na.rm = TRUE),
-    .names = "CV_{.col}"
-  ))
-
-kable(cv_soc_detail)
-
-
-```
-Les Coefficients de variations sont relativement faible, en dessous de $0,39$, à l'exception de celui de la société indexée par **235** qui est très proche de $1$. 
-
-# Analyse descriptive 
+# Statistiques descriptives
 
 ## Analyse univariée
 
-###  Répartition des compagnies selon leur nature
+Cette section est consacrée à l’analyse univariée des variables, visant à décrire leurs distributions et leurs principales caractéristiques statistiques.
+
+### Répartition des compagnies selon leur nature
+
+L’activité d’assurance non-vie concentre la majorité des compagnies du marché. À l’inverse, les Fonds de Retraite et de Prévoyance Sociale (FRPS) demeurent très faiblement représentés, avec une part limitée à $0,91 \%$. De même, le segment de la réassurance ne regroupe qu’une fraction marginale des compagnies d’assurance, soit $2,56 \%$.
 
 ```{r}
-
 # Percentage computation
 df_pct <- df %>%
   group_by(Nature) %>%
@@ -179,34 +63,24 @@ df_pct <- df %>%
 # Graphique 
 ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nature)) +
   geom_bar(stat = "identity", width = 0.5, color = "gray30") +  
-  geom_text(aes(label = paste0(round(Pourcentage, 2), "%")), 
-            hjust = 1, color = "black", size = 3.5) + 
+  geom_text(aes(label = sprintf("%.2f%%", Pourcentage)),
+          hjust = 0.5,
+          size = 3.5) + 
   coord_flip() +
   labs(title = "Répartition des compagnies par Nature (%)",
        x = "Nature",
        y = "") +
   scale_y_continuous(breaks = NULL) +  
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "none",
-    panel.grid.major.y = element_blank(),          
-    panel.grid.minor.y = element_blank(),          
-    panel.grid.major.x = element_line(color = "gray80", linetype = "dashed"),
-    panel.grid.minor.x = element_line(color = "gray90", linetype = "dashed"),
-    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    axis.text = element_text(color = "black")
-  ) +
-  scale_fill_brewer(palette = "Set2")  # palette harmonieuse
-
-
+ 
+  scale_fill_brewer(palette = "Set2")+
+  labs(caption = "Source: France Assureurs")
 ```
-Plus de la moitié des compagnies exercent dans l’assurance non-vie. Par ailleurs, très peu d’entreprises, soit $0,91 \%$, opèrent dans les Fonds de Retraite et de Prévoyance Sociale (FRPS). De même, les compagnies de réassurance ne représentent qu’une faible proportion du marché, soit $2,56 \%$ des compagnies d’assurance.
-
 
 ### Répartition des compagnies par famille
 
-```{r}
+La structure du marché est majoritairement dominée par les organismes mutualistes, lesquels représentent $53,71 \%$ de l’ensemble des compagnies. Le solde du marché se répartit de manière relativement équilibrée entre les assureurs traditionnels et les bancassureurs.
 
+```{r}
 # Percentage calculation per Famille
 df_pct <- df %>%
   group_by(Famille) %>%
@@ -223,23 +97,501 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
        x = "Famille",
        y = "") +
   scale_y_continuous(breaks = NULL) +  
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "none",
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor.y = element_blank(),
-    panel.grid.major.x = element_line(color = "gray80", linetype = "dashed"),
-    panel.grid.minor.x = element_line(color = "gray90", linetype = "dashed"),
-    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    axis.text = element_text(color = "black")
-  ) +
-  scale_fill_brewer(palette = "Set2")  
-
+  
+  scale_fill_brewer(palette = "Set2")+
+  labs(caption = "Source: France Assureurs")
 ```
-Là encore, plus de la moitié des compagnies sont mutualistes. Elles représentent en effet $53,71 \%$ des compagnies, tandis que le reste se répartit de manière égale entre les assureurs traditionnels et les bancassureurs.
 
 ## Analyse bivarariée
 
+À l’exception du segment de la réassurance, les organismes mutualistes apparaissent comme majoritairement représentés dans l’ensemble des regroupements par nature d’activité. Leur part relative demeure plus élevée que celle des bancassureurs et des assureurs traditionnels, tant dans les catégories des prestataires d’assurance non-vie que dans celles de l’assurance vie et de la capitalisation. En revanche, le secteur de la réassurance est dominé par les assureurs traditionnels, lesquels représentent $71,7\%$ des acteurs recensés. Il convient également de souligner que seuls les organismes mutualistes et les assureurs traditionnels interviennent dans la fourniture de fonds de retraite et de prévoyance sociale (FRSP). Enfin, la répartition des différentes familles d’assureurs apparaît globalement équilibrée dans les activités mixtes combinant assurance vie et assurance non-vie.
+
+Dans un soucis d'avoir des données de taille comparable entre les catégorie mixte, non-vie et vie, nous avons fusionné les catégories mixte et vie.
+
+```{r}
+## Crossed distribution
+df_pct <- df %>%
+  group_by(Nature, Famille) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(Nature) %>%
+  mutate(pct = n / sum(n) * 100)
+
+ggplot(df_pct, aes(x = Nature, y = pct, fill = Famille)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_text(aes(label = paste0(round(pct, 1), "%")),
+            position = position_dodge(width = 0.9), vjust = -0.5, size = 3.5) +
+  labs(title = "Répartition de la  Famille par Nature  (en %)",
+       x = "Nature",
+       y = "") +  # supprimer label axe y
+  scale_y_continuous(breaks = NULL) +  # pas de graduations
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")+
+  labs(caption = "Source: France Assureurs")
+```
+
+## Analyses trimestrielles
+
+Pour toutes les analyses qui suivent, nous ne prendrons en compte que deux natures de sociétés: 
+
+- Non Vie;
+- Vie (regroupant les natures **Vie/Capitalisation** et **Mixte**).
+
+
+```{r 1}
+
+df$Annee <- as.numeric(df$Annee)
+
+df_clean <- df %>%
+  mutate(
+    Trimestre = case_when(
+      Remise == "T1" ~ Annee + 0.00 ,
+      Remise == "T2" ~ Annee + 0.25,
+      Remise == "T3" ~ Annee + 0.50,
+      Remise == "T4" ~ Annee + 0.75,
+      TRUE ~ Annee
+    )
+  )
+# Séparation des données annuelles et trimestrielles
+df_annual <- df_clean[df_clean$Remise == "A", ]
+df_quarterly <- df_clean[df_clean$Remise %in% c("T1","T2","T3","T4"),]
+
+# Ajout des Trimestres manquants 
+
+toutes_societes <- union(unique(df_quarterly$SOCIETE), unique(df_annual$SOCIETE))
+
+# 2. Calcul des bornes de temps PAR SOCIETE (en utilisant Annuel ET Trimestriel)
+# C'est ici que se joue la survie des entreprises sans trimestres
+bornes_societes <- data.frame(SOCIETE = toutes_societes) %>%
+  left_join(
+    df_quarterly %>% group_by(SOCIETE) %>% 
+      summarise(t_min_q = min(Trimestre, na.rm = TRUE), 
+                t_max_q = max(Trimestre, na.rm = TRUE), .groups = "drop"),
+    by = "SOCIETE"
+  ) %>%
+  left_join(
+    df_annual %>% group_by(SOCIETE) %>% 
+      summarise(t_min_a = min(Annee, na.rm = TRUE), 
+                t_max_a = max(Annee, na.rm = TRUE), .groups = "drop"),
+    by = "SOCIETE"
+  ) %>%
+  mutate(
+    # On prend le min des deux sources. Si pas de trimestres, on prend l'année (ex: 2018.00)
+    Trimestre_deb = pmin(t_min_q, t_min_a, na.rm = TRUE),
+    # On prend le max des deux sources. Si pas de trimestres, on prend l'année + 0.75
+    Trimestre_fin = pmax(t_max_q, t_max_a + 0.75, na.rm = TRUE)
+  ) %>%
+  select(SOCIETE, Trimestre_deb, Trimestre_fin)
+
+# 3. Grille complète
+grille_complete <- expand.grid(
+  Annee = 2016:2025, 
+  Remise = c("T1", "T2", "T3", "T4"),
+  SOCIETE = toutes_societes
+) %>%
+mutate(
+  Trimestre = case_when(
+    Remise == "T1" ~ Annee + 0.00,
+    Remise == "T2" ~ Annee + 0.25,
+    Remise == "T3" ~ Annee + 0.50,
+    Remise == "T4" ~ Annee + 0.75 
+  )
+)
+
+# 4. Fusion finale
+referentiel_societes <- bind_rows(
+  df_quarterly %>% select(SOCIETE, Nature, Famille),
+  df_annual %>% select(SOCIETE, Nature, Famille)
+) %>%
+  filter(!is.na(Nature)) %>% # On ne garde que ce qui est renseigné
+  distinct(SOCIETE, .keep_all = TRUE) # Une seule ligne par société
+
+# 2. Construction de la grille propre
+df_quarterly_complet <- grille_complete %>%
+  # On joint d'abord le référentiel pour garantir Nature/Famille partout
+  left_join(referentiel_societes, by = "SOCIETE") %>%
+  # On joint les bornes temporelles
+  left_join(bornes_societes, by = "SOCIETE") %>%
+  # On joint les données réelles de SCR
+  left_join(
+    df_quarterly %>% select(Remise, Trimestre, Annee, SOCIETE, SCR, `FONDS PROPRES`, RATIO), 
+    by = c("Remise", "Trimestre", "Annee", "SOCIETE")
+  )%>%
+  filter(Trimestre >= Trimestre_deb)%>%
+  filter(Trimestre <= Trimestre_fin)%>%
+  filter(!(Annee ==2025 & Remise == "T4"))
+
+```
+
+```{r 2}
+evol <- df_quarterly %>%
+  mutate(Nature_Group = case_when(
+    Nature %in% c("Vie/Capitalisation", "Mixte") ~ "Vie",
+    Nature == "Non Vie" ~ "Non Vie",
+    TRUE ~ NA_character_ # Exclut les autres natures s'il y en a
+  )) %>%
+  # On ne garde que les lignes qui correspondent à nos deux groupes
+  filter(!is.na(Nature_Group)) %>%
+  group_by(Nature_Group, Trimestre) %>%
+  summarise(SCR_Moyen = mean(SCR, na.rm = TRUE),
+            FONDS_PROPRES_Moyen = mean(`FONDS PROPRES`, na.rm = TRUE), 
+            Ratio_Moyen = sum(`FONDS PROPRES`, na.rm = TRUE)/sum(SCR, na.rm = TRUE), 
+            .groups = "drop")
+
+
+ev <- df_annual %>%
+  mutate(Nature_Group = case_when(
+    Nature %in% c("Vie/Capitalisation", "Mixte") ~ "Vie",
+    Nature == "Non Vie" ~ "Non Vie",
+    TRUE ~ NA_character_ # Exclut les autres natures s'il y en a
+  )) %>%
+  # On ne garde que les lignes qui correspondent à nos deux groupes
+  filter(!is.na(Nature_Group)) %>%
+  group_by(Nature_Group, Annee) %>%
+  summarise(SCR_Moyen = mean(SCR, na.rm = TRUE),
+            FONDS_PROPRES_Moyen = mean(`FONDS PROPRES`, na.rm = TRUE), 
+            Ratio_Moyen = sum(`FONDS PROPRES`, na.rm = TRUE)/sum(SCR, na.rm = TRUE), 
+            .groups = "drop")
+```
+La base de données contient `r length(df_quarterly$SOCIETE)` trimestres avec des variables cibles déclarées. Nous pouvons donc observer l'évolution moyenne des Fonds propres et du ratio de solvabilité avec les données disponibles.
+
+  (i) **Ratio de solvabilité**
+
+```{r}
+ggplot(data = evol, aes(x = Trimestre-0.75, y= Ratio_Moyen))+
+geom_line(aes(linetype = "Trimestrielle"), color = "#3cc8e7")+
+geom_point(size = 1.2, color = "#3cc8e7")+
+
+geom_line(data = ev, aes(x= Annee, y = Ratio_Moyen
+               , linetype = "Annuelle" ), linewidth = 1, color = "#e74c3c" )+
+geom_point(data = ev, aes(x= Annee, y = Ratio_Moyen), size = 1.2, color = "#e74c3c" )+
+
+  # Personnalisation des couleurs pour bien distinguer les deux groupes
+#scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+scale_linetype_manual(values = c("Trimestrielle" =  "solid", "Annuelle" = "dotted"))+
+scale_x_continuous(breaks = seq(2016, 2025, by = 2), 
+                   labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+labs(
+title = "Évolution du Ratio moyen de solvabilité par nature",
+x = "Annee",
+y = "Ratio moyens de solvabilité",
+linetype = "Fréquence : "
+) +
+theme_minimal()+
+theme(legend.position = "bottom") +
+facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
+```
+Le ratio moyen de solvabilité trimestriel apporte plus d'information sur les variations qu'ont connues les sociétés d'assurance au cours de l'année. On constate donc que le ratio de solvabilité moyen des sociétés oscille avec beaucoup plus d'amplitude que les données annuelles ne le laissent entrevoir. 
+Le ratio moyen trimestriel des sociétés Non Vie varie avec une tendance légèrement baissière  entre **320$\%$** et **250$\%$ **. Il y a également une volatilité qui est décroissante dans le temps.
+Quant au ratio trimestriel moyen des sociétés d'assurances Vie, il est globalement plus faible que celui des sociétés non vie évoluant entre **160$\%$** et **260$\%$**. 
+Entre 2018 et 2020, on remarque une désynchronisation très forte entre le ratio moyen annuel et trimestriel des sociétés d'assurances vie. 
+
+  (ii) **Fonds Propres**
+
+```{r 4}
+ggplot(data = evol, aes(x = Trimestre-0.75, y= FONDS_PROPRES_Moyen/1000000))+
+geom_line(aes(linetype = "Trimestrielle"), color = "#3cc8e7")+
+geom_point(size = 1.2, color = "#3cc8e7")+
+
+geom_line(data = ev, aes(x= Annee, y = FONDS_PROPRES_Moyen/1000000
+               , linetype = "Annuelle" ), linewidth = 1, color = "#e74c3c" )+
+geom_point(data = ev, aes(x= Annee, y = FONDS_PROPRES_Moyen/1000000), size = 1.2, color = "#e74c3c" )+
+
+  # Personnalisation des couleurs pour bien distinguer les deux groupes
+#scale_color_manual(values = c("Non Vie" = "#2c3e50", "Vie" = "#e74c3c")) +
+scale_linetype_manual(values = c("Trimestrielle" =  "solid", "Annuelle" = "dotted"))+
+scale_x_continuous(breaks = seq(2016, 2025, by = 2), 
+                   labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), "")) +
+labs(
+title = "Évolution du fonds propres moyens par nature",
+x = "Dates",
+y = "Fonds propres Moyens (M€)",
+linetype = "Fréquence : "
+) +
+theme_minimal()+
+theme(legend.position = "bottom") +
+facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
+
+```
+
+Les données trimestrielles offrent une vision plus détaillée de l’évolution des fonds propres. Ces graphiques montrent que les fonds propres des sociétés d’assurance Vie sont plus volatils que ceux des sociétés Non‑Vie. Par ailleurs, les fonds propres moyens des sociétés Vie et Non‑Vie semblent présenter une légère tendance haussière, ce qui suggère que les entreprises de notre échantillon accumulent progressivement davantage de fonds propres au fil du temps, malgré certaines fluctuations.
+
+Nous observons également un écart important entre les valeurs annuelles et trimestrielles, aussi bien pour les sociétés d’assurance Non‑Vie que pour les sociétés Vie. Ce biais pourrait provenir de la taille des entreprises déclarant des données trimestrielles. En effet, toutes les sociétés ne transmettent pas d’informations trimestrielles. Seules `r length(unique(df_quarterly$SOCIETE))` sociétés de la base disposent d’au moins une observation trimestrielle, ce qui représente environ `r round(length(unique(df_quarterly$SOCIETE))*100/length(unique(df_quarterly_complet$SOCIETE)),2)`$\%$
+ de l’ensemble des sociétés recensées.
+
+```{r Décalage}
+societe <- unique(df_quarterly$SOCIETE)
+df_annual_trim <- df_annual%>%
+  mutate(Any_Trim = ifelse(SOCIETE %in% societe, "OUI", "NON"))%>%
+  group_by(Annee, Any_Trim)%>%
+  summarise( SCR_Moyen = mean(SCR, na.rm= TRUE),
+             FONDS_PROPRES_Moyens = mean(`FONDS PROPRES`, na.rm = TRUE),
+             Ratio_moyen = sum(`FONDS PROPRES`, na.rm = TRUE)/sum(SCR, na.rm = TRUE)
+  )
+
+ggplot(df_annual_trim, aes(x= Annee, y = FONDS_PROPRES_Moyens/1000000, color = Any_Trim ))+
+  geom_line()+
+  geom_point()+
+  scale_color_manual(values = c("OUI" = "red", "NON" = "blue"))+
+  labs(
+    title = " Fonds propres moyen en fonction de la disponibilité des valeurs trimestrielles ",
+    color = "déclaration trimestrielle",
+    y = "Fonds propres moyens (M€)",
+    x = "Dates"
+  )+
+  theme_minimal()
+
+
+```
+
+La divergence entre les moyennes annuelles et trimestrielles peut s’expliquer par le fait que les sociétés ne déclarant pas de données trimestrielles présentent, en moyenne, des niveaux de fonds propres annuels plus faibles. Autrement dit, seules les grandes sociétés d’assurance transmettent des données trimestrielles, tandis que toutes les sociétés — y compris les plus petites — déclarent des données annuelles. Ces petites sociétés tirent donc la moyenne annuelle globale vers le bas, ce qui crée un écart entre les deux séries.
+
+Pour corriger ce biais de sélection présent dans les données trimestrielles, nous allons ajuster les séries trimestrielles à partir des données annuelles.
+
+
+#### Ajustement des valeurs trimestrielles
+
+L’objectif est d’estimer le montant total de SCR et de fonds propres trimestriels que nous aurions obtenu si toutes les sociétés avaient transmis des valeurs trimestrielles. Pour cela, pour les sociétés ne déclarant que des valeurs annuelles, nous estimerons leurs valeurs trimestrielles en nous appuyant sur les comportements observés chez les sociétés qui déclarent à la fois des données trimestrielles et annuelles.
+
+
+La méthode d’ajustement repose sur le calcul du taux de croissance moyen par nature, obtenu à partir des sociétés qui déclarent à la fois des valeurs annuelles et trimestrielles. Ces taux de croissance moyens servent ensuite à estimer les valeurs trimestrielles manquantes à partir des valeurs annuelles disponibles.
+
+  (i) Pour le premier trimestre
+    
+Le taux de croissance moyen utilisé pour l’ajsutement correspond au taux de croissance entre la somme des valeurs de l’année précédente et la somme des valeurs du premier trimestre de l’année suivante.
+
+Supposons que nous souhaitons déterminer le taux de croissance moyen du premier trimestre de l’année t. Pour cela, nous considèrons l’ensemble E des sociétés ayant déclaré les valeurs de l’année t-1 ainsi que celles du premier trimestre de l’année t. Le taux de croissanse se calcul donc de la manière suivante :
+ : 
+
+$$ \tau_{moyen_{1,t}} =   \frac{\sum_{j \in E} SCR^j_{T_{1,t}}-\sum_{j \in E} SCR^j_{A_{t-1}} }{\sum_{j \in E}SCR^j_{A_{t-1}}} $$
+où : 
+
+  - $SCR^j_{T_{1,t}}$ désigne le SCR de la société j au premier trimestre de l'année t;
+  - $SCR^j_{A_{t-1}}$ désigne le SCR de la société j de l'année t-1.
+
+Nous faisons l’hypothèse que les sociétés n’ayant pas déclaré le premier trimestre de l’année t auraient connu un taux de croissance $\tau _{moyen_{1,t}}$ de leur SCR entre la fin de l’année t‑1 et le premier trimestre de l’année t.
+Nous estimons donc le SCR des sociétés n’ayant pas déclaré au premier trimestre de l’année t en multipliant la somme de leur SCR de l’année t‑1 par $1+\tau _{moyen_{1,t}}$.
+Pour estimer le SCR moyen au premier trimestre de l’année t, il suffit alors de considérer la somme des SCR des sociétés ayant déclaré, d’y ajouter la somme estimée pour celles qui n’ont pas déclaré, puis de diviser l’ensemble par le nombre total de sociétés.
+
+  (ii) Pour les autres trimestres (T2, T3 et T4)
+    
+Le taux de croissance moyen utilisé pour l’imputation correspond au taux de croissance entre la somme des valeurs du trimestre précédent et la somme des valeurs du trimestre que l’on souhaite estimer. Les valeurs estimer du premier trimestre servent à estimer ceux du deuxième, les valeurs de deuxième servent à estimer le troisième et les valeurs du troisième servent à estimer ceux du quatrième.
+  
+Supposons que nous souhaitons déterminer le taux de croissance moyen du trimestre i$\in \{2,3,4\}$ de l’année t. Pour cela, nous considèrons l’ensemble $E'$ des sociétés ayant déclaré les valeurs aux trimestres i-1 et i de l’année t. Le taux de croissanse se calcul donc de la manière suivante :
+
+$$ \tau_{moyen_{i,t}} =   \frac{\sum_{j \in E'} SCR^j_{T_{i,t}}-\sum_{j \in E'} SCR^j_{T_{i-1,t}} }{\sum_{j \in E'}SCR^j_{T_{i-1,t}}} $$
+Nous estimons le SCR des sociétés n’ayant pas déclaré au trimestre i de l’année t en multipliant l'estimation de leur SCR du trimestre i-1 de l’année t par $1+\tau _{moyen_{i,t}}$.
+Pour estimer le SCR moyen au trimestre i de l’année t, il suffit alors de considérer la somme des SCR des sociétés ayant déclaré, d’y ajouter la somme estimée pour celles qui n’ont pas déclaré, puis de diviser l’ensemble par le nombre total de sociétés.
+
+```{r New_function}
+
+calcul_moyennes_ajustees_finale <- function(df_quarterly, df_annual, natures, variables) {
+  
+  # 1. Filtrage par Nature si spécifié
+  if (!is.null(natures)) {
+    df_q_work <- df_quarterly %>% filter(Nature_Group %in% natures)
+    df_a_work <- df_annual %>% filter(Nature_Group %in% natures)
+  } else {
+    df_q_work <- df_quarterly
+    df_a_work <- df_annual
+  }
+
+  # Liste pour stocker les résultats finaux de toutes les variables
+  resultats_complets <- list()
+
+  # 2. Boucle sur chaque variable 
+  for (var_nom in variables) {
+    
+    # Identifier et trier chronologiquement les périodes
+    periodes <- df_q_work %>% 
+      distinct(Annee, Remise) %>%  
+      filter(!is.na(Annee), !is.na(Remise)) %>%
+      filter(Annee != 2016)%>%
+      arrange(Annee, Remise)
+
+    resultats_var <- list()
+    
+    # Variable pour stocker les prédictions/réels du trimestre précédent
+    df_prev_completed <- NULL 
+    
+    # 3. Boucle séquentielle sur les périodes
+    for (i in seq_len(nrow(periodes))) {
+      
+      an_cible <- periodes$Annee[i]
+      trim_cible <- periodes$Remise[i]
+      
+      # Récupération des données brutes du trimestre actuel
+      df_q_slice <- df_q_work %>% 
+        filter(Annee == an_cible, Remise == trim_cible) %>%
+        select(SOCIETE, Nature_Group, Val_Trim = .data[[var_nom]]) %>%
+        filter(!is.na(Val_Trim)) # On ne garde que les déclarants effectifs
+      
+      # Choix de la base de référence (N-1 ou Trimestre précédent)
+      if (trim_cible == "T1" || is.null(df_prev_completed)) {
+        
+        # --- LOGIQUE T1 : Référence Annuelle N-1 ---
+        df_a_slice <- df_a_work %>% 
+          filter(Annee == (an_cible - 1)) %>%
+          select(SOCIETE, Nature_Group, Val_Prev = .data[[var_nom]]) %>%
+          filter(!is.na(Val_Prev))
+        
+        comparaison <- full_join(df_a_slice, df_q_slice, by = c("SOCIETE", "Nature_Group"))
+        
+      } else {
+        
+        # --- LOGIQUE T2, T3, T4 : Référence Trimestre Précédent ---
+        comparaison <- full_join(
+          df_prev_completed %>% select(SOCIETE, Nature_Group, Val_Prev = Valeur_Finale),
+          df_q_slice, 
+          by = c("SOCIETE", "Nature_Group")
+        )
+      }
+      
+      # --- 4. CALCULS DU TAUX ET DE LA MASSE ESTIMÉE ---
+      res_macro <- comparaison %>%
+        group_by(Nature_Group) %>%
+        summarise(
+          # A. CONSTANTS (Présents en Période Actuelle ET Période Précédente)
+          sum_trim_const = sum(Val_Trim[!is.na(Val_Trim) & !is.na(Val_Prev)], na.rm = TRUE),
+          sum_prev_const = sum(Val_Prev[!is.na(Val_Trim) & !is.na(Val_Prev)], na.rm = TRUE),
+          
+          # B. ABSENTS (Présents/Prédits en Précédent, mais absents au trimestre actuel)
+          sum_prev_absents = sum(Val_Prev[is.na(Val_Trim) & !is.na(Val_Prev)], na.rm = TRUE),
+          
+          # C. NOUVEAUX (Au trimestre actuel, mais inconnus avant)
+          sum_trim_nouveaux = sum(Val_Trim[is.na(Val_Prev) & !is.na(Val_Trim)], na.rm = TRUE),
+          
+          # D. DENOMINATEUR
+          nb_total = n(),
+          .groups = "drop"
+        ) %>%
+        mutate(
+          Annee = an_cible,
+          Remise = trim_cible,
+          Variable = var_nom,
+          
+          # Calcul du taux de croissance sur les constants (T vs T-1 ou T1 vs Annuel N-1)
+          taux = ifelse(sum_prev_const > 0, sum_trim_const / sum_prev_const, 0),
+          
+          # Application du taux à la masse des absents de la période précédente
+          masse_estimee = sum_prev_absents * taux,
+          
+          # Total et Moyenne
+          total_ajuste = sum_trim_const + sum_trim_nouveaux + masse_estimee,
+          Moyenne_Ajustee = ifelse(nb_total > 0, total_ajuste / nb_total, NA)
+        )
+      
+      # --- 5. SAUVEGARDE DES PRÉDICTIONS POUR LE TRIMESTRE SUIVANT ---
+      # On reconstitue la base avec les réels et les imputés pour nourrir la prochaine itération
+      df_prev_completed <- comparaison %>%
+        left_join(res_macro %>% select(Nature_Group, taux), by = "Nature_Group") %>%
+        mutate(
+          Valeur_Finale = case_when(
+            !is.na(Val_Trim) ~ Val_Trim,                           # Si présent : on prend le réel
+            is.na(Val_Trim) & !is.na(Val_Prev) ~ Val_Prev * taux,  # Si absent : on impute avec (Précédent * taux)
+            TRUE ~ NA_real_
+          )
+        ) %>%
+        filter(!is.na(Valeur_Finale))
+      
+      # Stockage du résultat final de cette période
+      resultats_var[[length(resultats_var) + 1]] <- res_macro %>%
+        select(Annee, Remise, Nature_Group, Variable, Moyenne_Ajustee, total_ajuste,nb_total)
+    }
+    
+    # Regroupement des trimestres pour cette variable
+    resultats_complets[[var_nom]] <- bind_rows(resultats_var)
+  }
+
+  # Fusion finale de toutes les variables
+  return(bind_rows(resultats_complets))
+}
+
+```
+
+### Visualisation de l'ajustement
+
+```{r appelle de la fonction}
+df_q <- df_quarterly %>%
+  mutate(Nature_Group = case_when(
+    Nature %in% c("Vie/Capitalisation", "Mixte") ~ "Vie",
+    Nature == "Non Vie" ~ "Non Vie",
+    TRUE ~ NA_character_ # Exclut les autres natures s'il y en a
+  )) %>% filter( !is.na(Nature_Group))
+
+df_a <- df_annual %>%
+  mutate(Nature_Group = case_when(
+    Nature %in% c("Vie/Capitalisation", "Mixte") ~ "Vie",
+    Nature == "Non Vie" ~ "Non Vie",
+    TRUE ~ NA_character_ # Exclut les autres natures s'il y en a
+  )) %>% filter( !is.na(Nature_Group))
+
+df_resultats <- calcul_moyennes_ajustees_finale(
+      df_q, df_a, natures = unique(df$Nature_Group), variables = c("SCR", "FONDS PROPRES"))
+
+data_scr <- df_resultats%>%filter(Variable == "SCR")%>%select(-Variable)%>%rename( SCR = Moyenne_Ajustee, somme_scr = total_ajuste)
+data_fp <- df_resultats%>%filter(Variable == "FONDS PROPRES")%>%select(-Variable)%>%rename( "FONDS PROPRES" = Moyenne_Ajustee, somme_fp = total_ajuste )
+
+data_final <- data_scr%>%left_join(data_fp, by= c("Annee", "Remise", "Nature_Group"))
+data_final <- data_final%>%mutate(RATIO = somme_fp/somme_scr, 
+              Trimestre = case_when(
+                Remise == "T1" ~ Annee + 0.00,
+                Remise == "T2" ~ Annee + 0.25,
+                Remise == "T3" ~ Annee + 0.50,
+                Remise == "T4" ~ Annee + 0.75 
+              ))%>%
+  select(-somme_fp,-somme_scr)
+
+```
+
+
+  
+```{r 8}
+
+# 2. Création du graphique
+df_plot <- df_resultats%>%
+mutate(
+  Trimestre = case_when(
+    Remise == "T1" ~ Annee + 0.00,
+    Remise == "T2" ~ Annee + 0.25,
+    Remise == "T3" ~ Annee + 0.50,
+    Remise == "T4" ~ Annee + 0.75 
+  )
+)%>%filter(Annee >= 2017, Variable == "FONDS PROPRES") 
+ggplot(df_plot, aes(x = Trimestre-0.75, y = Moyenne_Ajustee/1000000)) +
+  
+  # Lignes et points trimestriels
+  geom_line(aes(linetype = "Trimestrielle (corrigée)"), color = "#3cc8e7")+
+  geom_point(size = 1.2, color = "#3cc8e7")+
+  
+  # Série annuelle
+  geom_line(data = ev%>%filter(Annee >= 2017), aes(x= Annee, y = FONDS_PROPRES_Moyen/1000000
+               , linetype = "Annuelle" ), linewidth = 1, color = "#e74c3c" )+
+  geom_point(data = ev%>%filter(Annee >= 2017), aes(x= Annee, y = FONDS_PROPRES_Moyen/1000000), size = 1.2, color = "#e74c3c" )+
+
+  scale_linetype_manual(values = c("Trimestrielle (corrigée)" =  "solid", "Annuelle" = "dotted"))+
+  scale_x_continuous(breaks = seq(2017, 2025, by = 2), 
+                   labels = function(x) ifelse(x %% 1 == 0, as.character(floor(x)), ""))+
+  
+  # Thème amélioré
+  labs(
+title = "Évolution Ajusté des fonds propres moyens par nature",
+x = "Dates",
+y = "Fonds propres Moyens (M€)",
+linetype = "Fréquence : "
+) +
+theme_minimal()+
+theme(legend.position = "bottom") +
+facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
+```
+Après ajustement, on observe que les données trimestrielles s’alignent désormais mieux avec les données annuelles, ce qui confirme la correction du biais initialement identifié.
+
+# Econométrie
+
+# Conclusion
+
+# Annxes
+
+### Analyse descriptive
 
 ```{r}
 ## Crossed distribution
@@ -252,164 +604,238 @@ df_pct <- df %>%
 ggplot(df_pct, aes(x = Famille, y = pct, fill = Nature)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   geom_text(aes(label = paste0(round(pct, 1), "%")),
-            position = position_dodge(width = 0.9), vjust = -0.5, size = 3.5) +
+            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   labs(title = "Répartition de la Nature par Famille (en %)",
        x = "Famille",
        y = "") +  # supprimer label axe y
   scale_y_continuous(breaks = NULL) +  # pas de graduations
   theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
-
-
+  theme(legend.position = "bottom")+
+  labs(caption = "Source: France Assureurs")
 ```
-
-Dans toutes les catégories de familles, la majorité des entreprises exerce dans l’assurance non-vie.
-
-\newpage
-
-# Analyse des données quantitatives au cours du temps 
-
-Dans cette partie, nous effectuons une analyse exploratoire des données annuelles.
 
 ```{r}
-
-### Here we Transforme numeric variable by dividing them by 10^8 to change  their scale
-
-num_vars <- names(df)[sapply(df, is.numeric)]
-
-num_vars <- setdiff(num_vars, c("SOCIETE","Annee", "RATIO")) 
-
-## function to change variables' scales
-
-divide_1e8 <- function(df, exclude = c("SOCIETE", "Annee", "RATIO")) {
-  num_vars <- names(df)[sapply(df, is.numeric)]
-  num_vars <- setdiff(num_vars, exclude)
-
-  df %>%
-    dplyr::mutate(across(all_of(num_vars), ~ . / 1e8))
-}
-
-## Spliting the dabase into two parts: annually and quarterly
-df_annual <- df %>% filter(Remise == "A")
-df_quarterly <- df %>% filter(Remise %in% c("T1", "T2", "T3", "T4"))
-
-df_annual <- divide_1e8(df_annual)
-df_quarterly <- divide_1e8(df_quarterly)
-
-
-```
-
-
-
-```{r}
-## Mean computation
-
-# numerical variable to analyse
-num_vars <- setdiff(names(df_annual)[sapply(df_annual, is.numeric)], c("SOCIETE","Annee"))
-
-# mean per years per Famille
-df_mean_famille <- df_annual %>%
-  group_by(Annee, Famille) %>%
-  summarise(across(all_of(num_vars), mean, na.rm = TRUE), .groups = "drop")
-
-# mean per years per Nature
-df_mean_nature <- df_annual %>%
-  group_by(Annee, Nature) %>%
-  summarise(across(all_of(num_vars), mean, na.rm = TRUE), .groups = "drop")
-
-```
-
-
-```{r}
-## Conversion into a time series after calculating the mean for each relevant variable, grouped by Nature and Famille.
-
-# For famille
-
-ts_famille <- list()
-
-for(v in num_vars){
-  ts_famille[[v]] <- lapply(unique(df_mean_famille$Famille), function(fam){
-    zoo(df_mean_famille[df_mean_famille$Famille == fam, v],
-        order.by = df_mean_famille$Annee[df_mean_famille$Famille == fam])
-  })
-  names(ts_famille[[v]]) <- unique(df_mean_famille$Famille)
-}
-
-## For nature
-ts_nature <- list()
-
-for(v in num_vars){
-  ts_nature[[v]] <- lapply(unique(df_mean_nature$Nature), function(nat){
-    zoo(df_mean_nature[df_mean_nature$Nature == nat, v],
-        order.by = df_mean_nature$Annee[df_mean_nature$Nature == nat])
-  })
-  names(ts_nature[[v]]) <- unique(df_mean_nature$Nature)
-}
-
-
-
-```
-
-```{r include=FALSE}
-## Average rate over the period
-df_scr <- df_mean_famille %>%
-  select(Annee, Famille, SCR) %>%
-  mutate(Annee = as.numeric(Annee))   
-
-df_scr <- df_scr %>% arrange(Famille, Annee) # sort by year and famille
-
-
-# Computation
-evol_scr <- df_scr %>%
-  group_by(Famille) %>%
-  summarise(
-    debut = first(SCR),          
-    fin = last(SCR),            
-    n = n() - 1,                
-    evol_moy_pct = ((fin / debut)^(1/n) - 1) * 100  # average rate
+dff <- df %>%
+ mutate(
+    Nature = case_when(
+      Nature %in% c("Mixte", "Vie/Capitalisation") ~ "Vie/Mixte",
+      TRUE ~ Nature
+    )
   )
 
-evol_scr
+# Filter to keep only Non vie and vie/Mixte
+dff<- dff %>% filter(
+  Nature %in% c("Non Vie","Vie/Mixte" ),
+  Remise=="A"
+)%>% rename("annees"=Annee)%>%mutate(annees=as.numeric(annees))
+
+```
+
+```{r}
+# 1) Années attendues
+annees_attendues <- dff %>%
+  distinct(annees) %>%
+  arrange(annees) %>%
+  pull(annees)
+# Couples SOCIETE x Nature réellement observés (doublons supprimés)
+soc_nat <- dff %>%
+  distinct(SOCIETE, Nature)
+dff["Annee"]=dff$annees
+# 2) Panel SOCIETE x Nature x Annee + indicateur présence
+panel <- soc_nat %>%
+  tidyr::crossing(Annee = annees_attendues) %>%   # crée SOCIETE x Nature x Annee seulement pour couples existants
+  left_join(
+    dff %>% distinct(SOCIETE, Nature, Annee) %>% mutate(present = 1L),
+    by = c("SOCIETE", "Nature", "Annee")
+  ) %>%
+  mutate(present = ifelse(is.na(present), 0L, 1L))
+
+# 3) Nb d'années manquantes par SOCIETE et Nature
+miss_by_soc_nat <- panel %>%
+  group_by(SOCIETE, Nature) %>%
+  summarise(nb_annees_manquantes = sum(present == 0L), .groups = "drop")
+
+# 4) Distribution 0..10 + % par Nature
+dist_miss_nat <- miss_by_soc_nat %>%
+  filter(nb_annees_manquantes >= 0, nb_annees_manquantes <= 10) %>%
+  count(Nature, nb_annees_manquantes, name = "nb_societes") %>%
+  complete(Nature, nb_annees_manquantes = 0:10, fill = list(nb_societes = 0)) %>%
+  group_by(Nature) %>%
+  mutate(
+    total_societes = sum(nb_societes),
+    pct_societes = ifelse(total_societes == 0, 0, 100 * nb_societes / total_societes)
+  ) %>%
+  ungroup() %>%
+  mutate(nb_annees_manquantes = factor(nb_annees_manquantes, levels = 0:10))
+
+# 5) Plot : axe X visible sur TOUTES les facettes
+if (nrow(dist_miss_nat) == 0) {
+  message("Aucune observation à tracer.")
+} else {
+  ggplot(dist_miss_nat, aes(x = nb_annees_manquantes, y = pct_societes)) +
+    geom_col() +
+    ggh4x::facet_wrap2(~ Nature, scales = "free_y", axes = "all") +
+    scale_x_discrete(drop = FALSE) +
+    scale_y_continuous(labels = function(x) paste0(x, " %")) +
+    labs(
+      x = "Nombre d'années manquantes",
+      y = "Pourcentage de sociétés",
+      title = "Répartition des sociétés (%) selon le nombre d'années manquantes (par Nature)"
+    ) +
+    theme_minimal()
+}
+```
+
+### Les indices boursiers.
+
+Les indices boursiers reflètent la performance globale des actions. Une baisse de ces indices entraîne une diminution de la valeur des actifs en actions détenus par les assureurs, ce qui se traduit par une augmentation du SCR actions et une réduction du ratio de solvabilité. Dans cette étude, deux indices boursiers sont considérés: l’EURO STOXX et le CAC 40.
+
+#### L’EURO STOXX 50
+
+L’*EURO STOXX 50* est un indice boursier regroupant les 50 principales sociétés cotées de la zone euro, sélectionnées principalement en fonction de leur capitalisation boursière flottante. Il constitue un indicateur de la santé économique et des performances des marchés financiers au sein de la zone euro. Le graphique présenté ci-dessous illustre l’évolution des valeurs maximales et minimales de cet indice deouis $2015$ jusqu'en $2025$.
+
+```{r, include=FALSE}
+library(tidyquant)
+monthly_STOXX50E <- tq_get("^STOXX50E",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")
+monthly_STOXX50E<-monthly_STOXX50E%>%filter(year(date)>2014)
+
+head(monthly_STOXX50E)
+```
+
+```{r, include=FALSE}
+
+library(tidyverse)
+indices<-function(STOXX50E){
+  STOXX50E<-STOXX50E%>% mutate(date=year(date))%>%group_by(date)%>%summarise(
+    stox_high=max(high), closed=max(close)
+  )%>%rename("annees"=date)
+}
+
+STOXX50E<-indices(monthly_STOXX50E)%>%rename("stox_closed"=closed)
+
+
+
+```
+
+```{r, include=FALSE}
+
+ggplot(STOXX50E, aes(x=annees))+
+  geom_line(aes(y=stox_high, colour="Valeur max"))+
+  geom_point(aes(y=stox_high, colour="Valeur max"))+
+  geom_point(aes(y=stox_closed, colour="Valeur de fermeture"))+
+  geom_line(aes(y=stox_closed, colour="Valeur de fermeture"))+
+  scale_x_continuous(breaks = c(2015,2017,2020,2022, 2024))+
+  labs(colour="Etats de l'indice", caption = "Source: Yahoo finace")+
+  xlab("Années")+
+  ylab("EURO STOXX 50")+
+  ggtitle("Evolution de l'indice EURO STOXX 50")
 
 ```
 
 ```{r}
 
-ggplot(df_scr, aes(x = Annee, y = SCR, color = Famille)) +
-  geom_line(size = 1.2) +    
-  geom_point(size = 2) +     
-  labs(title = "Évolution temporelle du SCR moyen par Famille",
-       x = "Année", y = "SCR") +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
-
-
-
+ggplot(monthly_STOXX50E, aes(x=date))+
+  geom_line(aes(y=high, color="Valeur max"))+
+  geom_point(aes(y=high, color="Valeur max"))+
+  geom_line(aes(y=close, color="Valeur de fermeture"))+
+  geom_point(aes(y=close, color="Valeur de fermeture"))+
+  labs(colour="Etas de l'indice", caption = "Yahoo finance")+
+  xlab("Années")+
+  ylab("EURO STOXX 50")+
+  ggtitle("Evolution mensuelle de l'indice EURO STOXX 50")
 ```
 
+Ces indices évoluent de manière globalement parallèle, suivant une tendance générale à la hausse. Néanmoins, une chute marquée est observée en mars 2020, atteignant un niveau minimal, en raison des mesures de restriction et de l’incertitude économique engendrées par la pandémie de COVID-19. C'est en effet en cette période que Donald Trump avait annoncé la restriction des entrées sur le téritoire américain; source d'une panique boursière.
 
-Le capital de solvabilité requis connaît une tendance à la croissance sur la période 2016-2024, ce qui peut traduire soit une augmentation du niveau d’activité des compagnies d’assurance, soit une orientation croissante de leurs portefeuilles vers des actifs risqués. Cette hausse est  marquée chez les entreprises traditionnelles d’assurance par  une évolution moyenne de $7,3 \%$ contre $4,7 \%$ chez les bancassureurs  et $3,33\%$ pour les mutualistes.
+#### Le Standard & Poor’s 500 (S&P 500)
 
-Il convient également de noter que les bancassureurs et les compagnies d’assurance traditionnelles présentent, en moyenne, un ratio de solvabilité relativement plus élevé. 
+Le S&P 500 est un indice boursier large représentant les 500 plus grandes sociétés cotées aux États-Unis, pondérées en fonction de leur capitalisation boursière flottante. Il est largement utilisé comme référence du marché actions américain et constitue un indicateur clé de la performance économique et financière du pays. L’évolution des valeurs maximales et minimales de cet indice entre 2015 et 2025, présentée dans le graphique ci-dessous, permet d’analyser la volatilité du marché ainsi que l’impact des événements macroéconomiques et géopolitiques sur les marchés financiers américains
 
 ```{r}
-df_ratio <- df_mean_famille %>%
-  select(Annee, Famille, RATIO) %>%
-  mutate(Annee = as.numeric(Annee))   
+monthly_SP500 <- tq_get("^GSPC",
+                        from = "2000-01-01",
+                        to = "2025-01-01",
+                        periodicity = "monthly")
 
-df_ratio <- df_ratio %>% arrange(Famille, Annee) # sort by year and famille
+monthly_SP500 <- monthly_SP500 %>% 
+  filter(year(date) > 2014)
 
-library(ggplot2)
 
-ggplot(df_ratio, aes(x = Annee, y = RATIO, color = Famille)) +
-  geom_line(size = 1.2) +    
-  geom_point(size = 2) +     
-  labs(title = "Évolution temporelle du RATIO moyen par Famille",
-       x = "Année", y = "RATIO") +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
+ggplot(monthly_SP500, aes(x=date))+
+  geom_line(aes(y=high, color="Valeur max"))+
+  geom_point(aes(y=high, color="Valeur max"))+
+  geom_line(aes(y=close, color="Valeur de fermeture"))+
+  geom_point(aes(y=close, color="Valeur de fermeture"))+
+  labs(colour="Etats de l'indice", caption = "Source:Yahoo finance")+
+  xlab("Années")+
+  ylab("S&P 500")+
+  ggtitle("Evolution mensuelle de l'indice S&P 500")
+```
+
+Le S&P 500 connaît une tendence croissance sur toute la période avec également une pertubation en mars 2020 due à la pandémie de OVID-19. Toutefois cette indice est visiblement moins volatile que l'EURO STOXX 50.
+
+```{r}
+SP500<-indices(monthly_SP500)%>%rename("sp_closed"=closed)
+
 
 
 ```
 
-Le ratio de solvabilité moyen des différentes familles reste supérieur à $2 \%$ sur l’ensemble de la période. Il est même relativement plus élevé chez les mutualistes, se maintenant constamment au‑dessus de $3,5 \%$. Cette observation s’expliquerait par le fait que ces derniers sont moins exposés au risque, comparativement aux bancassureurs et aux sociétés d’assurance traditionnelles, comme le confirme l’analyse précédente.
+#### L'indice CAC 40
+
+ 
+
+L’indice *CAC 40* constitue le principal indice boursier de la Bourse de Paris, reflétant la performance des 40 actions les plus importantes et les plus activement négociées sur Euronext Paris. Le graphique ci-après illustre l’évolution de ses valeurs maximales et minimales au fil du temps.
+
+```{r, include=FALSE}
+CA_40_month <- tq_get("^FCHI",
+                       from = "2000-01-01",
+                       to = "2025-01-01",
+                       periodicity = "monthly")%>%filter(year(date)>2014)
+
+CAC40<- indices(CA_40_month)%>%rename("ca_closed"=closed)
+
+```
+
+```{r}
+ggplot(CA_40_month, aes(x = date))+
+  geom_line(aes(y=high, colour="Valeur max"))+
+  geom_point(aes(y=high, colour="Valeur max"))+
+  geom_line(aes(y=close, colour="Valeur de fermeture"))+
+  geom_point(aes(y=close, colour="Valeur de fermeture"))+
+  xlab("Années")+
+  ylab("CAC 40")+
+  ggtitle("Evolution mensuelle de l'indice CAC 40 au cours du temps")+
+  labs(colour="Etats de l'indice", caption = "Source: yahoo finance")
+  
+  
+  
+```
+
+Comme pour l’EURO STOXX, les valeurs de l'indice CAC 40 évoluent de manière parallèle et croissante avec également une chutte marqué en mars 2020 pour la même raison que précédemment.
+
+#### L'indice DAX
+
+Le DAX (Deutscher Aktienindex) est l’indice de référence du marché boursier allemand, regroupant les 40 principales sociétés cotées à la Bourse de Francfort, sélectionnées principalement en fonction de leur capitalisation boursière flottante. C'est l'équivalent allemend du CAC 40. Le graphique ci-après représente les variation de cet indice sur la période $2015-2025.$
+
+```{r}
+monthly_DAX <- tq_get("^GDAXI",
+                      from = "2015-01-01",
+                      to   = "2025-01-01",
+                      periodicity = "monthly") %>%
+  filter(year(date) >= 2015)
+ggplot(monthly_DAX, aes(x=date))+
+  geom_line(aes(y=high, color="Valeur max"))+
+  geom_point(aes(y=high, color="Valeur max"))+
+  geom_line(aes(y=low, color="Valeur min"))+
+  geom_point(aes(y=low, color="Valeur min"))+
+  labs(colour="Etats de l'indice", caption = "Source: Yahoo finance")+
+  xlab("Années")+
+  ylab("DAX")+
+  ggtitle("Evolution mensuelle de l'indice DAX")
+
+DAX<-indices(monthly_DAX )%>%rename("dax_closed"=closed)
+```
