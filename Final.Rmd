@@ -2089,7 +2089,7 @@ DAX<-indices(monthly_DAX )%>%rename("dax_closed"=closed)
 ## Modélisation
 
 ### Régression en différence
-
+#### Tests stationnarité ADF et KPSS
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 # Tests KPSS 
 liste_variables <- list(
@@ -2293,7 +2293,7 @@ kable(diag_table, booktabs = TRUE, caption = "Tests sur les résidus modèle rat
   kable_styling(latex_options = c("striped", "HOLD_position"), full_width = FALSE)
 ```
 
-
+#### Diagnostics modèles
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 model_fp_vie_dynamique2 <- lm(
   diff_fonds_propres ~ 
@@ -2678,14 +2678,9 @@ Cette variable indique la périodicité de la donnée :
 
 Dans le jeu de données, certaines années ne contiennent pas toutes les remises, ce qui traduit simplement des différences de disponibilité des données selon les périodes.
 
-\newpage
-# Bibliographie
 
 \newpage
 # Bibliographie
-
-\newpage
-\section*{Bibliographie}
 
 \begin{description}
     \item[[1]] \textbf{S. Aalala}, (2021). \textit{Revue 2020 Solvabilité II : Impact du changement de l'extrapolation des taux sans risque. Mémoire d'actuariat, Institut des Actuaires.}
