@@ -2360,7 +2360,7 @@ qqline(residus, col="red")
 
 ## Lecture et analyse des rapports annuels des compagnies d’assurance
 
-Dans cette partie, nous avons parcouru un ensemble de rapports sur la solvabilité et la situation financière de plusieurs compagnies d’assurance entre 2019 et 2025 afin d’approfondir la compréhension des mécanismes par lesquels les variables macroéconomiques et macro-financières affectent la solvabilité des assureurs. Nous nous sommes concentrés uniquement sur les parties des rapports annuels qui traitent de la solvabilité en nous focalisant sur :
+Nous avons parcouru un ensemble de rapports sur la solvabilité et la situation financière de plusieurs compagnies d’assurance entre 2019 et 2025 afin d’approfondir la compréhension des mécanismes par lesquels les variables macroéconomiques et macro-financières affectent la solvabilité des assureurs. Nous nous sommes concentrés uniquement sur les parties des rapports annuels qui traitent de la solvabilité en nous focalisant sur :
 
 - la variation des SCR, des fonds propres et des ratios de solvabilité ;
 - la variation des variables macro-financières.
