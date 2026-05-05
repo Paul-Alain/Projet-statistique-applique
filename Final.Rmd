@@ -9,7 +9,7 @@ output:
 
 \begin{center}
 
-{\Huge Projet de Statistiques Appliquées}
+{\Huge Projet de Statistique Appliquée}
 
 \vspace{1cm}
 
@@ -319,11 +319,13 @@ ggplot(df_pct, aes(x = Nature, y = pct, fill = Famille)) +
 
 ## Analyses trimestrielles
 
+
 Pour toutes les analyses qui suivent, nous ne prendrons en compte que deux natures de sociétés: 
 
 - Non-vie;
 - Vie (regroupant les natures **Vie/Capitalisation** et **Mixte**).
 
+### Ratio de Solvabilité et Fonds Propres
 
 ```{r 1}
 
@@ -469,8 +471,8 @@ theme(legend.position = "bottom") +
 facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
 ```
 Le ratio moyen de solvabilité trimestriel apporte plus d'information sur les variations qu'ont connues les sociétés d'assurance au cours de l'année. On constate donc que le ratio de solvabilité moyen des sociétés oscille avec beaucoup plus d'amplitude que les données annuelles ne le laissent entrevoir. 
-Le ratio moyen trimestriel des sociétés non-vie varie avec une tendance légèrement baissière  entre **320$\%$** et **250$\%$ **. Il y a également une volatilité qui est décroissante dans le temps.
-Quant au ratio trimestriel moyen des sociétés d'assurances vie, il est globalement plus faible que celui des sociétés non-vie évoluant entre **160$\%$** et **260$\%$**. 
+Le ratio moyen trimestriel des sociétés non-vie varie avec une tendance légèrement baissière  entre 320$\%$ et 250$\%$. Il y a également une volatilité qui est décroissante dans le temps.
+Quant au ratio trimestriel moyen des sociétés d'assurances vie, il est globalement plus faible que celui des sociétés non-vie évoluant entre 160$\%$ et 260$\%$. 
 Entre 2018 et 2020, on remarque une désynchronisation très forte entre le ratio moyen annuel et trimestriel des sociétés d'assurances vie. 
 
   (ii) **Fonds Propres**
@@ -536,7 +538,7 @@ La divergence entre les moyennes annuelles et trimestrielles peut s’expliquer 
 Pour corriger ce biais de sélection présent dans les données trimestrielles, nous allons ajuster les séries trimestrielles à partir des données annuelles.
 
 
-#### Ajustement des valeurs trimestrielles
+### Ajustement des valeurs trimestrielles
 
 L’objectif est d’estimer le montant total de SCR et de fonds propres trimestriels que nous aurions obtenu si toutes les sociétés avaient transmis des valeurs trimestrielles. Pour cela, pour les sociétés ne déclarant que des valeurs annuelles, nous estimerons leurs valeurs trimestrielles en nous appuyant sur les comportements observés chez les sociétés qui déclarent à la fois des données trimestrielles et annuelles.
 
@@ -1711,7 +1713,11 @@ $$\begin{aligned}
 & + \beta_{4,0} l\_sp_t + \beta_{5,0} l\_cac_t + \epsilon_t
 \end{aligned}$$
 
-#### Test des bornes (cointégration)
+#### Test des bornes (cointégration) 
+
+\vspace{0.5cm}
+
+La première étape de l'analyse consiste à vérifier l'existence d'une relation d'équilibre de long terme entre le ratio de solvabilité et ses déterminants via le test aux bornes (Bounds F-test).
 
 ```{r cointégration, comment = ""}
 
@@ -1737,11 +1743,12 @@ kable(
   )
 ```
 
-**Interprétation des résultats : Cointégration**
+**Interprétation des résultats : Cointégration** \\
 
-La première étape de l'analyse consiste à vérifier l'existence d'une relation d'équilibre de long terme entre le ratio de solvabilité et ses déterminants via le test aux bornes (Bounds F-test). La statistique de Fisher obtenue est de `r round(test_bornes$statistic,2)` avec une p-value de `r round(test_bornes$p.value,4)`. Ce résultat, largement inférieur au seuil de $5 \%$, nous permet de rejeter l'hypothèse nulle d'absence de cointégration. Il existe donc une relation stable et non fallacieuse entre ces variables sur le long terme, ce qui valide l'utilisation du modèle ARDL pour analyser la dynamique du ratio.
+La statistique de Fisher obtenue est de `r round(test_bornes$statistic,2)` avec une p-value de `r round(test_bornes$p.value,4)`. Ce résultat, largement inférieur au seuil de $5 \%$, nous permet de rejeter l'hypothèse nulle d'absence de cointégration. Il existe donc une relation stable et non fallacieuse entre ces variables sur le long terme, ce qui valide l'utilisation du modèle ARDL pour analyser la dynamique du ratio.
 
 #### Coefficients de long terme
+\vspace{0.5cm}
 
 ```{r , comment = ""}
 # --- COEFFICIENTS DE LONG TERME (MULTIPLIERS) ---
@@ -1761,7 +1768,7 @@ kable(
   add_header_above(c(" " = 1, "Impact permanent sur le ratio" = 4))
 ```
 
-**Interprétation des résultats :  Relation de Long Terme**
+**Interprétation des résultats :  Relation de Long Terme** \newline
 
 log(S&P 500) et log(CAC 40) ont des coefficients significatif au seuil de $5\%$. La variation du taux long terme est marginalement significatif au seuil de 10% ($t = 1.74$, $p = 0.097$). On peut donc dire qu'une appréciation de 1% de l'indice américain est associée à une hausse de 0.46 point du ratio de solvabilité à long terme.
 
@@ -1770,6 +1777,7 @@ log(IPC) et Taux PIB sont non significativent. Cela indiquent que ces variables 
 Le ratio de solvabilité des sociétés d'assurances est structurellement lié aux dynamiques des marchés actions. La diversification géographique apparaît comme un facteur clé : l'exposition au marché américain renforce la solvabilité, tandis qu'une concentration sur le marché européen constitue un facteur de vulnérabilité. Ce résultat plaide pour une gestion prudentielle attentive à la composition géographique des portefeuilles.
 
 #### Dynamique de court terme
+\vspace{0.5cm}
 
 Pour estimer la dynamique de court terme, on réecrit le modèle sous la forme de correction d'erreur. L'estimation du modèle sous sa forme non contrainte à correction d'erreur permet d'analyser la vitesse à laquelle le ratio de solvabilité s'ajuste après un choc exogène. Il s'agit d'un transformation algébrique de l'équation de base du modèle : 
 
@@ -1779,6 +1787,7 @@ $$\begin{aligned}
 &+ \delta_{1,0} \Delta l\_ipc_t + \delta_{1,1} \Delta l\_ipc_{t-1} + \delta_{1,2} \Delta l\_ipc_{t-2} \\
 &+ \delta_{3,0} \Delta d\_taux\_l_t + \epsilon_t
 \end{aligned}$$
+
 ```{r}
 # --- DYNAMIQUE DE COURT TERME (UECM) ---
 model_uecm <- uecm(modele_auto$best_model)
@@ -1802,7 +1811,7 @@ Ce coefficient est estimé à $\lambda = −1.44 \;(p < 0.001)$, étant signific
 
 ```{r, out.width='60%', fig.align='center'}
 library(ggplot2)
-ggplot(data_f, aes(x = Trimestre)) +
+ggplot(data_f, aes(x = Trimestre, color = "blue")) +
   geom_line(aes(y = ratio)) + geom_point(aes(y = ratio))+
   labs(title = "Evolution du ratio de solvabilité moyen", x= "Dates",
        y = "Ratio") +
@@ -1817,7 +1826,7 @@ La validité des inférences statistiques repose sur le respect des hypothèses 
 
 Test d'autocorrélation (Breusch-Godfrey) : la statistique LM = 9.47 associée à une p-value de 0.050 ne permet pas de rejeter l'hypothèse nulle d'absence d'autocorrélation au seuil de 5%. La structure de retards retenue capture donc correctement la dynamique temporelle des données, garantissant la validité des écarts-types estimés.
 
-Test de normalité (Jarque-Bera) : la statistique χ² = 2.04 (p-value = 0.36) conduit au non-rejet de l'hypothèse de normalité des résidus. Ce résultat assure la validité des tests de Student et de Fisher, même sur un échantillon de taille modeste.
+Test de normalité (Jarque-Bera) : la statistique $\chi^2$ = 2.04 (p-value = 0.36) conduit au non-rejet de l'hypothèse de normalité des résidus. Ce résultat assure la validité des tests de Student et de Fisher, même sur un échantillon de taille modeste.
 
 Tests de stabilité structurelle (CUSUM et CUSUM²) : les sommes cumulées des résidus récursifs demeurent à l'intérieur des bandes de confiance à 5% sur l'ensemble de la période d'estimation. Les coefficients du modèle sont donc stables dans le temps, confirmant l'absence de rupture structurelle.
 
