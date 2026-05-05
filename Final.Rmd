@@ -18,9 +18,10 @@ output:
 \vspace{2cm}
 
 Chiara Frassu \\
-Gugan Selvaradjou \\
-Paul-Alain Kengne \\
 Mac Kingsley Fodjo Kamga \\
+Paul-Alain Kengne \\
+Gugan Selvaradjou \\
+
 
 \vspace{2cm}
 
@@ -68,7 +69,8 @@ library(insee)
 library(car) 
 library(sandwich)
 library(ARDL)
-
+library(broom)
+library(purrr)
 ```
 
 ```{r, include=FALSE}
@@ -93,47 +95,7 @@ Le présent travail a donc pour objectif d’évaluer l’impact des variables f
 
 Cette étude permettra notamment d’apprécier le degré de dépendance de la solvabilité des assureurs vis-à-vis des variables macro-financières. Elle constitue ainsi un outil d’aide à la décision pour les compagnies d’assurance, les décideurs publics ainsi que les autorités de régulation prudentielle.
 
-
-# Révue de la littérature
-
-
-
-Les assureurs jouent un rôle majeur dans le système financier en tant qu’investisseurs institutionnels et leur exposition aux différents risques est structurante pour leur solvabilité. Dans le cadre prudentiel Solvabilité II, la sensibilité des fonds propres aux variations des taux, des marchés actions et plus généralement de la conjoncture économique est fortement encadrée. Cette revue de littérature vise à synthétiser les principaux résultats existants.
-
-**Impact des taux d’intérêt et du marché obligataire sur la solvabilité des assureurs**
-
-La longue durée des engagements d’assurance rend ces entreprises particulièrement sensibles à la structure par terme des taux. Les stress tests réalisés par l’EIOPA mettent en évidence une forte sensibilité des entreprises européennes d’assurance aux chocs de marché, révélant l’exposition directe du SCR aux variations de taux. L’environnement prolongé de taux bas a exercé une pression sur la solvabilité et la rentabilité des assureurs notamment à travers leurs fonds propres. La réévaluation des primes de risques suite à la remontée des taux peut ainsi entraîner des pertes importantes dans les portefeuilles obligataires, affectant le ratio de solvabilité (EIOPA, 2018) [1].
-Dans le cadre de Solvabilité II, la courbe des taux sans risque utilisée pour actualiser les flux futurs constitue un élément central dans le calcul des provisions Best Estimates. Un abaissement durable de cette courbe entraîne une hausse des provisions, particulièrement pour les passifs de longue duration, ce qui réduit mécaniquement les fonds propres disponibles (Aalala, 2021) [7].
-Par ailleurs, Berdin et Gründl (2015) [2] montrent qu’un environnement de faibles taux peut conduire les assureurs à accroître leur exposition à des actifs plus risqués afin de compenser la faiblesse des rendements. Cette réallocation accroît la sensibilité du bilan aux variations de taux d’intérêt. Ces travaux confirment que la gestion actif-passif et la duration des portefeuilles constituent des éléments centraux dans la maîtrise du risque de solvabilité.
-Enfin, Poufinas et Siopi (2024) [3] mettent en évidence une relation inverse entre le développement du marché obligataire et le ratio de solvabilité. Un
-marché obligataire plus développé se caractérise par une meilleure liquidité et une meilleure stabilité, conduisant à une hausse de la demande en obligations et accroit leur prix. Cette appréciation de la valeur des obligations peut accroître l’exposition au risque de crédit et de spread, augmentant ainsi le capital réglementaire requis.
-
-**Impact du marché actions, de la volatilité et des corrélations de marché**
-
-L’exposition des compagnies d’assurance au marché actions s’est accrue dans un contexte de hausse des taux et d’inflation élevée. Face à cette remontée des taux, l’EIOPA observe une réallocation partielle des portefeuilles vers des actifs plus risqués, notamment les actions, afin de préserver le rendement, au prix d’un besoin accru en capital réglementaire.
-Les travaux de Baranoff et Sager (2002) [11] montrent qu’une exposition accrue aux risques financiers, notamment actions, crédit et taux, s’accompagne d’un niveau de capital requis plus élevé afin d’absorber la volatilité des marchés. Les fluctuations de la valeur de marché affectent directement les fonds propres et introduisent une volatilité significative dans le ratio de solvabilité (Rapport ACM 2023) [6].
-Dans cette logique, les travaux de Pénasse et Dezorme (2021) [5] mettent en évidence un arbitrage entre le rendement espéré des actions et le surplus de SCR imposé par Solvabilité II.
-
-**Rôle des variables macroéconomiques : inflation et cycle économique**
-
-Au-delà des variables financières, la littérature souligne que la conjoncture macroéconomique, notamment l’inflation et la croissance, exerce un effet significatif sur la solvabilité des assureurs via la profitabilité, le niveau des sinistres et la dynamique des primes.
-Les travaux récents de l’EIOPA montrent que l’inflation exerce une pression négative sur la valeur réelle et le rendement des actifs non indexés ainsi que sur la rentabilité des assureurs. Pour les assureurs non-vie, elle augmente également le coût des sinistres et des charges d’exploitation. Pour les assureurs vie, une inflation inattendue peut rendre les provisions techniques insuffisantes et dégrader la rentabilité technique, ce qui exerce une pression négative sur la solvabilité (EIOPA, 2023) [9].
-L’étude de Gonji et al. (2020) [10] met également en évidence un impact du taux d’inflation et du PIB sur la croissance et la rentabilité des compagnies d’assurance. Une croissance économique soutenue favorise généralement la demande d’assurance et la capacité des assureurs à générer des fonds propres, tandis qu’un ralentissement économique peut dégrader la qualité des actifs et peser sur le ratio de solvabilité.
-
-Dans l'ensemble, la littérature met en évidence le rôle central des variables macro-financières dans la dynamique de solvabilité, avec des effets différenciés selon les branches. Les assureurs Vie apparaissent généralement plus sensibles aux taux et aux marchés financiers en raison de la longue duration de leurs engagements, tandis que la branche Non-Vie semble davantage influencée par l'inflation et le cycle d'exploitation.
-Notre travail s'inscrit dans cette lignée tout en s'en distinguant sur plusieurs points. D'une part, nous mobilisons des données Solvabilité II françaises sur la période 2016-2025 ce qui permet de travailler dans un cadre réglementaire homogène peu exploité empiriquement. D'autre part, nous combinons trois approches complémentaires — modèle en différences, ARDL et données de panel — afin de capter simultanément les dynamiques de court terme, les relations d'équilibre de long terme et l'hétérogénéité individuelle des assureurs. Enfin, la distinction systématique entre branches Vie et Non-Vie constitue un apport empirique par rapport aux études qui traitent le secteur de façon agrégée.
-
-
-# Chronologie des évènements
-
-Nous avons réalisé une chronologie des évènements macroéconomiques et macro-financiers entre 2016 et 2025 (période de nos données) ayant impacté la solvabilité et l'activité des assureurs. Cela afin de déceler les variables pertinentes pour notre analyse et afin de déceler des premiers mécanismes dans l'évolution et la sensibilité du ratio de solvabilité aux
-variables macro-financières.
-Nous avons relevé trois grandes phases économiques sur cette période. De 2016 à 2020, les assureurs étaient placés dans un environnement de taux d'intérêt très bas qui a exercé une pression négative sur leur ratio de solvabilité. En effet, les revenus obligataires étaient faibles, ce qui a dégradé leur portefeuille d'investissement et il a été plus difficile pour les assureurs vie d'honorer leurs engagements. Suite à cela, l'économie a subi un retournement et un choc inflationniste pendant les années 2021 et 2022 dû à la reprise économique post-COVID-19 et la crise énergétique. Les taux d'intérêt directeurs de la BCE ont rapidement augmenté et l'inflation a explosé. Pour les assureurs, la hausse brutale des taux a entraîné des pertes latentes sur leur portefeuille obligataire, entraînant une baisse des fonds propres et donc une dégradation du ratio de solvabilité. Enfin, durant les dernières années 2023 à 2025, l'économie traverse une période d'instabilité financière et géopolitique. Les marchés financiers sont affectés par plusieurs sources de volatilité, notamment une crise bancaire et des tensions géopolitiques toujours dans un contexte inflationniste et de taux d'intérêt élevés. Les portefeuilles des compagnies d'assurance ont perdu en valeur et le SCR de marché a augmenté, détériorant les deux composants du ratio de solvabilité. 
-
-
-
-Cette chronologie nous a permis de noter les variables macro-économiques qui semblent en grande partie impacter la solvabilité et l'activité des assureurs. Ainsi, il a été observé que es taux d'intérêt ont un impact sur la valeur des obligations détenues par les assureurs entrainant des pertes ou plus-values latentes réduisant la valeur de marché de leurs fonds propres. En outre, la rentabilité des portefeuilles obligataires des assureurs est affectée. Dans ce contexte, les assureurs doivent ajuster la duration de leur portefeuille afin de gérer leur exposition au risque de taux. Ces éléments impactent donc le ratio de solvabilité des assureurs. L'inflation impacte elle aussi significativement l'activité des assureurs, à travers une hausse du coût des sinistres pour les assureurs non-vie qui amène les assureurs à ajuster leur tarification et réévaluer leurs provisions à la hausse. L'inflation conduit alors une baisse de leur résultat technique et leur solvabilité est dégradée. Enfin, la volatilité des marchés financiers entraîne une baisse potentielle de la valeur des portefeuilles actions des assureurs et une augmentation du SCR de marché pour couvrir cette incertitude. Cette combinaison réduit les fonds propres et peut dégrader le ratio de solvabilité.
-
+# Cadre macroéconomique et règlementaire
 ## Les formules du SCR
 
 Le SCR (*Solvency Capital Requirement*) représente l’exigence en fonds propres permettant à un assureur de faire face à ses risques sur un horizon d’un an avec une probabilité de 99,5 %, soit l’équivalent d’une faillite théorique tous les 200 ans. Les assureurs peuvent utiliser la formule standard définie par l’EIOPA, un modèle interne propre à leur structure de risque, ou une combinaison des deux (modèle partiel). Le SCR se décompose en trois termes :
@@ -143,7 +105,6 @@ $$SCR = BSCR + SCR_{op} - Adj$$
 Le BSCR (*Basic SCR*) agrège les SCR par type de risque à l’aide d’une matrice de corrélation. L’Adj représente la capacité d’absorption des pertes par les provisions techniques et les impôts différés. Chaque SCR élémentaire correspond à la perte de fonds propres résultant d’un choc instantané calibré par l’EIOPA.
 
 $$BSCR = \sqrt{\sum_{i,j} Corr_{i,j} \cdot SCR_i \cdot SCR_j} + SCR_{intangibles}$$
-
 Les coefficients $Corr_{i,j}$ de la formule du BSCR sont issus de la matrice suivante :
 
 |  | Marché | Défaut | Sous. Vie | Sous. Santé | Sous. Non-vie |
@@ -159,11 +120,9 @@ Les coefficients $Corr_{i,j}$ de la formule du BSCR sont issus de la matrice sui
 Le risque de souscription couvre l’incertitude sur les résultats des contrats, due notamment à des erreurs de tarification, de provisionnement ou à la survenance d’événements extrêmes. Il se divise en trois modules distincts, chacun calculé par agrégation matricielle de ses propres sous-risques :
 
 $$SCR_{vie} = \sqrt{\sum_{(i,j)} Corr^{Vie}_{i,j} \cdot SCR_i \cdot SCR_j}$$
-
 $$SCR_{sant\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{Sant\acute{e}}_{i,j} \cdot SCR_i \cdot SCR_j}$$
 
 $$SCR_{non-vie} = \sqrt{\sum_{(i,j)} Corr^{NV}_{i,j} \cdot SCR_i \cdot SCR_j}$$
-
 La matrice $Corr^{Vie}$ pour le risque vie comprend sept sous-risques. Les corrélations négatives, par exemple entre mortalité et longévité (−0,25), reflètent leur nature opposée : une hausse de la mortalité est défavorable pour les contrats décès mais favorable pour les rentes viagères, ce qui justifie une compensation partielle dans le calcul du SCR.
 
 ### Matrice des sous-risques vie
@@ -183,7 +142,6 @@ La matrice $Corr^{Vie}$ pour le risque vie comprend sept sous-risques. Les corr�
 Le risque de marché mesure la sensibilité de l’assureur aux évolutions des marchés financiers (taux, actions, immobilier, devises, spreads). Il est calculé par agrégation matricielle de six sous-risques :
 
 $$SCR_{march\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{March\acute{e}}_{i,j} \cdot SCR_i \cdot SCR_j}$$
-
 |  | Taux | Actions | Immobilier | Spread | Concentration | Devise |
 |---|---:|---:|---:|---:|---:|---:|
 | Taux d’intérêt | 1 | A | A | A | 0 | 0,25 |
@@ -218,6 +176,15 @@ Ce risque couvre la perte potentielle liée à la défaillance d’une contrepar
 
 Dans la matrice BSCR, le risque de défaut présente une corrélation de 0,25 avec tous les autres modules, à l’exception de la souscription non-vie avec laquelle la corrélation est portée à 0,5, reflétant l’interdépendance entre la sinistralité et les défauts de réassureurs.
 
+## Chronologie des évènements macroéconomiques
+
+Nous avons réalisé une chronologie des évènements macroéconomiques et macro-financiers entre 2016 et 2025 (période de nos données) ayant impacté la solvabilité et l'activité des assureurs en France. Cela a permis de déceler les variables pertinentes pour notre analyse et afin de déceler des premiers mécanismes dans l'évolution et la sensibilité du ratio de solvabilité aux
+variables macro-financières.
+Nous avons relevé trois grandes phases économiques sur cette période. De 2016 à 2020, les assureurs étaient placés dans un environnement de taux d'intérêt très bas qui a exercé une pression négative sur leur ratio de solvabilité. En effet, les revenus obligataires étaient faibles, ce qui a dégradé leur portefeuille d'investissement et il a été plus difficile pour les assureurs vie d'honorer leurs engagements. Suite à cela, l'économie a subi un retournement et un choc inflationniste pendant les années 2021 et 2022 dû à la reprise économique post-COVID-19 et la crise énergétique. Les taux d'intérêt directeurs de la BCE ont rapidement augmenté et l'inflation s'est considérablement accélérée. Pour les assureurs, la hausse brutale des taux a entraîné des pertes latentes sur leur portefeuille obligataire, entraînant une baisse des fonds propres et donc une dégradation du ratio de solvabilité. Enfin, durant les dernières années 2023 à 2025, l'économie traverse une période d'instabilité financière et géopolitique. Les marchés financiers sont affectés par plusieurs sources de volatilité, notamment une crise bancaire et des tensions géopolitiques toujours dans un contexte inflationniste et de taux d'intérêt élevés. Les portefeuilles des compagnies d'assurance ont perdu en valeur et le SCR de marché a augmenté, détériorant les deux composants du ratio de solvabilité. 
+
+
+
+Cette chronologie nous a permis de noter les variables macro-économiques qui semblent en grande partie impacter la solvabilité et l'activité des assureurs. Ainsi, il a été observé que les taux d'intérêt ont un impact sur la valeur des obligations détenues par les assureurs entrainant des pertes ou plus-values latentes réduisant la valeur de marché de leurs fonds propres. En outre, la rentabilité des portefeuilles obligataires des assureurs est affectée. Dans ce contexte, les assureurs doivent ajuster la duration de leur portefeuille afin de gérer leur exposition au risque de taux. Ces éléments impactent donc le ratio de solvabilité des assureurs. L'inflation impacte elle aussi significativement l'activité des assureurs, à travers une hausse du coût des sinistres pour les assureurs non-vie qui amène les assureurs à ajuster leur tarification et réévaluer leurs provisions à la hausse. L'inflation conduit alors a une baisse de leur résultat technique et leur solvabilité est dégradée. Enfin, la volatilité des marchés financiers entraîne une baisse potentielle de la valeur des portefeuilles actions des assureurs et une augmentation du SCR de marché pour couvrir cette incertitude. Cette combinaison réduit les fonds propres et peut dégrader le ratio de solvabilité.
 
 ## Lecture et analyse des rapports annuels des compagnies d’assurance
 
@@ -232,7 +199,33 @@ Par ailleurs, cette analyse confirme que les taux d’intérêt jouent un rôle 
 
 Ces éléments permettent d’apporter un premier éclairage sur la problématique étudiée et d’orienter l’analyse statistique qui sera menée par la suite, afin de faciliter l’interprétation des résultats.
 
+# Revue de la littérature
 
+Les assureurs jouent un rôle majeur dans le système financier en tant qu’investisseurs institutionnels et leur exposition aux différents risques est structurante pour leur solvabilité. Dans le cadre prudentiel Solvabilité II, la sensibilité des fonds propres aux variations des taux, des marchés actions et plus généralement de la conjoncture économique est fortement encadrée. Cette revue de littérature vise à synthétiser les principaux résultats existants.
+
+**Impact des taux d’intérêt et du marché obligataire sur la solvabilité des assureurs**
+
+La longue durée des engagements d’assurance rend ces entreprises particulièrement sensibles à la structure par terme des taux. Les stress tests réalisés par l’EIOPA mettent en évidence une forte sensibilité des entreprises européennes d’assurance aux chocs de marché, révélant l’exposition directe du SCR aux variations de taux. L’environnement prolongé de taux bas a exercé une pression sur la solvabilité et la rentabilité des assureurs notamment à travers leurs fonds propres. La réévaluation des primes de risques suite à la remontée des taux peut ainsi entraîner des pertes importantes dans les portefeuilles obligataires, affectant le ratio de solvabilité (EIOPA, 2018) [1].
+Dans le cadre de Solvabilité II, la courbe des taux sans risque utilisée pour actualiser les flux futurs constitue un élément central dans le calcul des provisions Best Estimates. Un abaissement durable de cette courbe entraîne une hausse des provisions, particulièrement pour les passifs de longue duration, ce qui réduit mécaniquement les fonds propres disponibles (Aalala, 2021) [7].
+Par ailleurs, Berdin et Gründl (2015) [2] montrent qu’un environnement de faibles taux peut conduire les assureurs à accroître leur exposition à des actifs plus risqués afin de compenser la faiblesse des rendements. Cette réallocation accroît la sensibilité du bilan aux variations de taux d’intérêt. Ces travaux confirment que la gestion actif-passif et la duration des portefeuilles constituent des éléments centraux dans la maîtrise du risque de solvabilité.
+Enfin, Poufinas et Siopi (2024) [3] mettent en évidence une relation inverse entre le développement du marché obligataire et le ratio de solvabilité. Un
+marché obligataire plus développé se caractérise par une meilleure liquidité et une meilleure stabilité, conduisant à une hausse de la demande en obligations et accroit leur prix. Cette appréciation de la valeur des obligations peut accroître l’exposition au risque de crédit et de spread, augmentant ainsi le capital réglementaire requis.
+
+**Impact du marché actions, de la volatilité et des corrélations de marché**
+
+L’exposition des compagnies d’assurance au marché actions s’est accrue dans un contexte de hausse des taux et d’inflation élevée. Face à cette remontée des taux, l’EIOPA observe une réallocation partielle des portefeuilles vers des actifs plus risqués, notamment les actions, afin de préserver le rendement, au prix d’un besoin accru en capital réglementaire.
+Les travaux de Baranoff et Sager (2002) [11] montrent qu’une exposition accrue aux risques financiers, notamment actions, crédit et taux, s’accompagne d’un niveau de capital requis plus élevé afin d’absorber la volatilité des marchés. Les fluctuations de la valeur de marché affectent directement les fonds propres et introduisent une volatilité significative dans le ratio de solvabilité (Rapport ACM 2023) [6].
+Dans cette logique, les travaux de Pénasse et Dezorme (2021) [5] mettent en évidence un arbitrage entre le rendement espéré des actions et le surplus de SCR imposé par Solvabilité II.
+
+**Rôle des variables macroéconomiques : inflation et cycle économique**
+
+Au-delà des variables financières, la littérature souligne que la conjoncture macroéconomique, notamment l’inflation et la croissance, exerce un effet significatif sur la solvabilité des assureurs via la profitabilité, le niveau des sinistres et la dynamique des primes.
+Les travaux récents de l’EIOPA montrent que l’inflation exerce une pression négative sur la valeur réelle et le rendement des actifs non indexés ainsi que sur la rentabilité des assureurs. Pour les assureurs non-vie, elle augmente également le coût des sinistres et des charges d’exploitation. Pour les assureurs vie, une inflation inattendue peut rendre les provisions techniques insuffisantes et dégrader la rentabilité technique, ce qui exerce une pression négative sur la solvabilité (EIOPA, 2023) [9].
+L’étude de Gonji et al. (2020) [10] met également en évidence un impact du taux d’inflation et du PIB sur la croissance et la rentabilité des compagnies d’assurance. Une croissance économique soutenue favorise généralement la demande d’assurance et la capacité des assureurs à générer des fonds propres, tandis qu’un ralentissement économique peut dégrader la qualité des actifs et peser sur le ratio de solvabilité.
+
+Dans l'ensemble, la littérature met en évidence le rôle central des variables macro-financières dans la dynamique de solvabilité, avec des effets différenciés selon les branches. Les assureurs vie apparaissent généralement plus sensibles aux taux et aux marchés financiers en raison de la longue duration de leurs engagements, tandis que la branche non-vie semble davantage influencée par l'inflation et le cycle d'exploitation.
+
+Notre travail s'inscrit dans cette lignée tout en s'en distinguant sur plusieurs points. D'une part, nous mobilisons des données Solvabilité II françaises sur la période 2016-2025 ce qui permet de travailler dans un cadre réglementaire homogène peu exploité empiriquement. D'autre part, nous combinons deux approches complémentaires : un modèle en différences et un modèle ARDL afin de capter simultanément les dynamiques de court terme et les relations d'équilibre de long terme Enfin, la distinction entre branches vie et non-vie constitue un apport empirique par rapport aux études qui traitent le secteur de façon agrégée.
 
 # Statistiques descriptives
 
@@ -328,7 +321,7 @@ ggplot(df_pct, aes(x = Nature, y = pct, fill = Famille)) +
 
 Pour toutes les analyses qui suivent, nous ne prendrons en compte que deux natures de sociétés: 
 
-- Non Vie;
+- Non-vie;
 - Vie (regroupant les natures **Vie/Capitalisation** et **Mixte**).
 
 
@@ -476,8 +469,8 @@ theme(legend.position = "bottom") +
 facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
 ```
 Le ratio moyen de solvabilité trimestriel apporte plus d'information sur les variations qu'ont connues les sociétés d'assurance au cours de l'année. On constate donc que le ratio de solvabilité moyen des sociétés oscille avec beaucoup plus d'amplitude que les données annuelles ne le laissent entrevoir. 
-Le ratio moyen trimestriel des sociétés Non Vie varie avec une tendance légèrement baissière  entre **320$\%$** et **250$\%$ **. Il y a également une volatilité qui est décroissante dans le temps.
-Quant au ratio trimestriel moyen des sociétés d'assurances Vie, il est globalement plus faible que celui des sociétés non vie évoluant entre **160$\%$** et **260$\%$**. 
+Le ratio moyen trimestriel des sociétés non-vie varie avec une tendance légèrement baissière  entre **320$\%$** et **250$\%$ **. Il y a également une volatilité qui est décroissante dans le temps.
+Quant au ratio trimestriel moyen des sociétés d'assurances vie, il est globalement plus faible que celui des sociétés non-vie évoluant entre **160$\%$** et **260$\%$**. 
 Entre 2018 et 2020, on remarque une désynchronisation très forte entre le ratio moyen annuel et trimestriel des sociétés d'assurances vie. 
 
   (ii) **Fonds Propres**
@@ -508,9 +501,9 @@ facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
 
 ```
 
-Les données trimestrielles offrent une vision plus détaillée de l’évolution des fonds propres. Ces graphiques montrent que les fonds propres des sociétés d’assurance Vie sont plus volatils que ceux des sociétés Non‑Vie. Par ailleurs, les fonds propres moyens des sociétés Vie et Non‑Vie semblent présenter une légère tendance haussière, ce qui suggère que les entreprises de notre échantillon accumulent progressivement davantage de fonds propres au fil du temps, malgré certaines fluctuations.
+Les données trimestrielles offrent une vision plus détaillée de l’évolution des fonds propres. Ces graphiques montrent que les fonds propres des sociétés d’assurance vie sont plus volatils que ceux des sociétés non‑vie. Par ailleurs, les fonds propres moyens des sociétés vie et non‑vie semblent présenter une légère tendance haussière, ce qui suggère que les entreprises de notre échantillon accumulent progressivement davantage de fonds propres au fil du temps, malgré certaines fluctuations.
 
-Nous observons également un écart important entre les valeurs annuelles et trimestrielles, aussi bien pour les sociétés d’assurance Non‑Vie que pour les sociétés Vie. Ce biais pourrait provenir de la taille des entreprises déclarant des données trimestrielles. En effet, toutes les sociétés ne transmettent pas d’informations trimestrielles. Seules `r length(unique(df_quarterly$SOCIETE))` sociétés de la base disposent d’au moins une observation trimestrielle, ce qui représente environ `r round(length(unique(df_quarterly$SOCIETE))*100/length(unique(df_quarterly_complet$SOCIETE)),2)`$\%$
+Nous observons également un écart important entre les valeurs annuelles et trimestrielles, aussi bien pour les sociétés d’assurance non‑vie que pour les sociétés vie. Ce biais pourrait provenir de la taille des entreprises déclarant des données trimestrielles. En effet, toutes les sociétés ne transmettent pas d’informations trimestrielles. Seules `r length(unique(df_quarterly$SOCIETE))` sociétés de la base disposent d’au moins une observation trimestrielle, ce qui représente environ `r round(length(unique(df_quarterly$SOCIETE))*100/length(unique(df_quarterly_complet$SOCIETE)),2)`$\%$
  de l’ensemble des sociétés recensées.
 
 ```{r Décalage,out.width='60%', fig.align='center'}
@@ -1228,7 +1221,7 @@ Si $t_{stat}$ > $t_{crit}$ : On rejette *H0* au seuil de significativité choisi
 
 Ainsi, les tests ADF et KPSS appliqués aux séries transformées confirment leur stationnarité validant les conditions d’application du modèle de régression linéaire Moindres Carrés Ordinaires.
 
-###  Test de Causalité de Granger
+###  Test de causalité de Granger
 
 
 
@@ -1236,7 +1229,7 @@ Des tests de causalité au sens de Granger ont été réalisés afin d’identif
 
 *H0* : les coefficients associés aux valeurs retardées de la variable explicative sont conjointement nuls.
 
-Pour les assureurs Vie, les résultats mettent en évidence un pouvoir prédictif significatif des taux longs (retard 1), de l’IPC (retard 4) et du S&P500 (retards 2) sur les fonds propres. L’IPC (retard 4) a un effet prédictif significatif sur le SCR et le S&P500 (retard 3) sur le ratio.  Pour les assureurs Non-Vie, seules quelques relations prédictives limitées apparaissent, principalement entre l’IPC (retard 3) et les fonds propres ainsi qu’entre les taux longs (retard 1) et le ratio de solvabilité.
+Pour les assureurs vie, les résultats mettent en évidence un pouvoir prédictif significatif des taux longs (retard 1), de l’IPC (retard 4) et du S&P500 (retards 2) sur les fonds propres. L’IPC (retard 4) a un effet prédictif significatif sur le SCR et le S&P500 (retard 3) sur le ratio.  Pour les assureurs non-vie, seules quelques relations prédictives limitées apparaissent, principalement entre l’IPC (retard 3) et les fonds propres ainsi qu’entre les taux longs (retard 1) et le ratio de solvabilité.
 
 ```{r granger-multi-lags, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE, comment = ""}
 # Granger Vie
@@ -1295,11 +1288,11 @@ Afin d’éviter les problèmes de multicolinéarité entre indices boursiers fo
 
 Des spécifications contemporaines ont d'abord été estimées par MCO (cf. Annexe Table). Malgré des diagnostics résiduels satisfaisants, les coefficients apparaissaient majoritairement non significatifs, suggérant l'existence de mécanismes de transmission retardés. Les modèles dynamiques finaux ont donc été construits en deux étapes : les tests de causalité de Granger ont d'abord permis d'identifier les retards pertinents puis les spécifications ont été comparées via les critères AIC et BIC afin d'assurer un équilibre entre robustesse statistique et interprétation économique.
 
-Les résultats mettent en évidence des mécanismes de transmission différenciés entre branches Vie et Non-Vie ce qui est cohérent avec leurs structures d'activité respectives.
+Les résultats mettent en évidence des mécanismes de transmission différenciés entre branches vie et non-vie ce qui est cohérent avec leurs structures d'activité respectives.
 
 Les écarts-types des coefficients sont corrigés à l’aide de l’estimateur robuste de Newey-West afin de tenir compte d’une éventuelle hétéroscédasticité et autocorrélation des résidus. Bien que les tests de Breusch-Pagan et Ljung-Box ne rejettent pas formellement l'homoscédasticité et l'absence d'autocorrélation, la sensibilité des p-values à cette correction suggère la présence de déviations non détectées par ces tests sur petit échantillon, justifiant une approche robuste par précaution.
 
-#####  Assureurs Vie
+#####  Assureurs vie
 ###### Fonds propres - Vie
 
 \begin{equation}
@@ -1336,7 +1329,7 @@ modelsummary(
 ```
 
 L'ensemble des coefficients sont significatifs au seuil de 5% après correction des écarts-types par la méthode de Newey-West. Les résidus ne présentent pas d'autocorrélation selon le test de Ljung-Box, le modèle semble donc robuste.
-Les résultats mettent en évidence une forte sensibilité des fonds propres des assureurs Vie aux conditions macro-financières. La hausse des taux d’intérêt de long terme exerce un effet négatif sur la croissance des fonds propres traduisant probablement la baisse de la valeur de marché des portefeuilles obligataires lors des phases de remontée des taux. À l’inverse, les performances des marchés actions internationaux, approximées par le S&P 500, soutiennent positivement l’évolution des fonds propres avec un décalage de deux trimestres confirmant l’exposition importante des assureurs Vie aux marchés financiers.
+Les résultats mettent en évidence une forte sensibilité des fonds propres des assureurs vie aux conditions macro-financières. La hausse des taux d’intérêt de long terme exerce un effet négatif sur la croissance des fonds propres traduisant probablement la baisse de la valeur de marché des portefeuilles obligataires lors des phases de remontée des taux. À l’inverse, les performances des marchés actions internationaux, approximées par le S&P 500, soutiennent positivement l’évolution des fonds propres avec un décalage de deux trimestres confirmant l’exposition importante des assureurs vie aux marchés financiers.
 L’inflation apparaît également comme un facteur défavorable à la solvabilité avec un effet retardé de quatre trimestres. Ce résultat peut refléter l’augmentation progressive des coûts de gestion et le délai d'ajustement des primes. Enfin, la significativité du terme autorégressif souligne l’existence d’une dynamique de persistance des fonds propres, les chocs observés tendent à se diffuser progressivement dans le temps.
 
 ###### SCR - Vie
@@ -1372,9 +1365,9 @@ modelsummary(
   kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
 ```
 
-Les résultats montrent que le SCR des assureurs Vie présente une dynamique de rappel importante comme l’indique la significativité du terme autorégressif. Les ajustements du besoin en capitals sont donc progressifs et les chocs observés sur le SCR tendant à se résorber partiellement au trimestre suivant. Les taux d’intérêt de long terme et l’inflation exercent tous deux un effet négatif sur la croissance du SCR. Ces résultats apparaissent cohérents dans la mesure où ces deux variables influencent les mécanismes d’actualisation des engagements des assureurs. Dans un contexte de hausse des taux, souvent associé à des tensions inflationnistes, la valeur actuelle des passifs futurs diminue, ce qui contribue à alléger les exigences réglementaires en capital. L’effet retardé de l’IPC suggère toutefois que cette transmission s’opère progressivement dans le bilan des assureurs Vie. Par ailleurs, la constante positive et significative indique l’existence d’une croissance résiduelle du SCR non entièrement expliquée par les variables macro-financières intégrées au modèle.
+Les résultats montrent que le SCR des assureurs Vie présente une dynamique de rappel importante comme l’indique la significativité du terme autorégressif. Les ajustements du besoin en capitals sont donc progressifs et les chocs observés sur le SCR tendant à se résorber partiellement au trimestre suivant. Les taux d’intérêt de long terme et l’inflation exercent tous deux un effet négatif sur la croissance du SCR. Ces résultats apparaissent cohérents dans la mesure où ces deux variables influencent les mécanismes d’actualisation des engagements des assureurs. Dans un contexte de hausse des taux, souvent associé à des tensions inflationnistes, la valeur actuelle des passifs futurs diminue, ce qui contribue à alléger les exigences réglementaires en capital. L’effet retardé de l’IPC suggère toutefois que cette transmission s’opère progressivement dans le bilan des assureurs vie. Par ailleurs, la constante positive et significative indique l’existence d’une croissance résiduelle du SCR non entièrement expliquée par les variables macro-financières intégrées au modèle.
 
-###### Ratio de solvabilité - Vie
+###### Ratio de solvabilité - vie
 
 \begin{equation}
 \begin{aligned}
@@ -1406,16 +1399,16 @@ modelsummary(
   kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
 ```
 
-La dynamique du ratio de solvabilité semble principalement expliquée par son propre terme retardé dont le coefficient négatif traduit un mécanisme de retour à la moyenne dans l’ajustement de la solvabilité des assureurs Vie. Le rendement du S&P500 exerce un effet positif modéré sur le ratio de solvabilité avec un retard de trois trimestres, suggérant qu’un environnement boursier favorable améliore progressivement la solvabilité des assureurs Vie à travers la valorisation des actifs financiers et de meilleures conditions de rendement des placements. L’absence d’effet significatif sur le SCR suggère que cette amélioration des fonds propres ne semble pas être entièrement compensée par une hausse des exigences en capital.
+La dynamique du ratio de solvabilité semble principalement expliquée par son propre terme retardé dont le coefficient négatif traduit un mécanisme de retour à la moyenne dans l’ajustement de la solvabilité des assureurs vie. Le rendement du S&P500 exerce un effet positif modéré sur le ratio de solvabilité avec un retard de trois trimestres, suggérant qu’un environnement boursier favorable améliore progressivement la solvabilité des assureurs vie à travers la valorisation des actifs financiers et de meilleures conditions de rendement des placements. L’absence d’effet significatif sur le SCR suggère que cette amélioration des fonds propres ne semble pas être entièrement compensée par une hausse des exigences en capital.
 À l’inverse, les variables de taux d'intérêt et d’inflation n'apparaissent plus comme des déterminants robustes des variations du ratio de solvabilité probablement en raison d’effets compensatoires entre fonds propres et SCR.
 Par ailleurs, la constante n’apparaît plus significative, il ne semble pas y avoir de croissance structurelle du ratio non expliquée par les variables macro-financières et la dynamique de rappel.
 
 
-#####  Assureurs Non-Vie \
+#####  Assureurs non-vie \
 \
-Nous adoptons la même démarche pour les assureurs Non-Vie malgré l’absence de résultats forts aux tests de Granger.
+Nous adoptons la même démarche pour les assureurs non-vie malgré l’absence de résultats forts aux tests de Granger.
 
-###### Fonds Propres - Non-Vie
+###### Fonds Propres - Non-vie
 
 \begin{equation}
 \begin{aligned}
@@ -1451,10 +1444,10 @@ modelsummary(
   kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
 ```
 
-Les assureurs non-vie semblent davantage déconnectés des taux et des marchés financiers que les assureurs Vie. La dynamique de leurs fonds propres parait essentiellement dictée par sa propre inertie.
+Les assureurs non-vie semblent davantage déconnectés des taux et des marchés financiers que les assureurs vie. La dynamique de leurs fonds propres parait essentiellement dictée par sa propre inertie.
 Cependant, la constante est significative indiquant une croissance structurelle indépendante des fluctuations macro-financières. Cette dynamique suggère que la richesse nette de cette branche repose principalement sur le cycle d'exploitation (primes et sinistres) plutôt que sur le cycle financier.
 
-###### SCR - Non-Vie
+###### SCR - Non-vie
 
 \begin{equation}
 \begin{aligned}
@@ -1487,7 +1480,7 @@ modelsummary(
 Les résultats montrent également qu’une hausse des taux d’intérêt de court terme réduit la croissance du SCR avec un retard de trois trimestres. Ce résultat suggère une transmission différée des conditions de taux aux exigences réglementaires en capital, possiblement via les mécanismes d’actualisation des engagements et l’évolution de l’exposition au risque de taux.
 La constante positive suggère une dynamique de croissance structurelle interne peu sensible aux chocs macro-financiers immédiats.
 
-###### Ratio de solvabilité - Non-Vie
+###### Ratio de solvabilité - Non-vie
 
 \begin{equation}
 \begin{aligned}
@@ -1520,7 +1513,7 @@ modelsummary(
   kable_styling(latex_options = c("striped", "HOLD_position"), full_width = F)
 ```
 
-Une hausse des taux d’intérêt de long terme améliore le ratio de solvabilité avec un retard de trois trimestres, probablement via l’augmentation des fonds propres et l’amélioration des revenus financiers. À l’inverse, les taux courts exercent un effet négatif sur le ratio de solvabilité. Ce résultat suggère qu’un relèvement des taux courts peut temporairement détériorer l’équilibre prudentiel des assureurs Non-Vie.
+Une hausse des taux d’intérêt de long terme améliore le ratio de solvabilité avec un retard de trois trimestres, probablement via l’augmentation des fonds propres et l’amélioration des revenus financiers. À l’inverse, les taux courts exercent un effet négatif sur le ratio de solvabilité. Ce résultat suggère qu’un relèvement des taux courts peut temporairement détériorer l’équilibre prudentiel des assureurs non-vie.
 
 #### Diagnostics et limites du modèle
 
@@ -1534,7 +1527,7 @@ Par ailleurs, cette approche en différences ne permet pas d'identifier les rela
 
 Le modèle ARDL (Autoregressive Distributed Lag) est une approche économétrique puissante pour examiner les liens dynamiques entre des variables dans le temps. Contrairement aux méthodes classiques de cointégration, l'ARDL est particulièrement flexible car il permet d'analyser des séries ayant différents ordres d'intégration ($I(0)$ ou $I(1)$)
 
-### Formulation Mathématique du Modèle
+### Formulation mathématique du modèle
 
 Le modèle fusionne une partie autorégressive (les valeurs passées du ratio) et des délais répartis (les valeurs actuelles et passées des marchés).L'équation structurelle est la suivante:
 
@@ -1553,7 +1546,7 @@ Pour estimer notre modèle nous procedons en 3 étapes :
  2. Recherche des retard optimaux et estimation du modèle
  3. Diagnostic du modèle
 
-### Variables explicatives et Stationnarité
+### Variables explicatives et stationnarité
 
 Pour ce modèle, les variables explicatives retenues se divisent en deux catégories :
 
@@ -1842,7 +1835,7 @@ Malgré la robustesse des diagnostics, plusieurs limites méthodologiques doiven
 # Conclusion
 
 
-Cette étude démontre que la solvabilité des assureurs n’est pas une donnée statique, mais le produit de dynamiques complexes et différenciées selon les segments de marché. Nos résultats soulignent une hétérogénéité marquée dans la spécificité des métiers : tandis que les assureurs Vie voient leur solidité financière portée par la performance des marchés actions, notamment le S&P 500, les assureurs Non-Vie affichent une vulnérabilité plus prononcée aux fluctuations des taux d’intérêt. Cette sensibilité sectorielle s’inscrit par ailleurs dans une dynamique de marchés globaux où la diversification géographique joue un rôle protecteur prépondérant. L’analyse ARDL met ainsi en lumière que l’exposition au marché américain renforce la solvabilité, là où une concentration sur le marché européen peut constituer un facteur de fragilité. Enfin, bien que la mise en évidence d’une relation de cointégration confirme une stabilité sous tension avec une convergence de long terme, la trajectoire du ratio reste marquée par des oscillations trimestrielles dues à une sur-correction des chocs macroéconomiques. Si ces mécanismes de rappel interne assurent une certaine résilience au secteur, la dépendance aux variables financières demeure majeure. Ces conclusions plaident donc, tant pour les régulateurs que pour les directions financières, en faveur d'une gestion proactive de l'allocation d'actifs et d'une surveillance accrue des cycles de taux, garantissant que la promesse d'indemnisation initiale soit honorée en dépit de la volatilité des marchés.
+Cette étude démontre que la solvabilité des assureurs n’est pas une donnée statique, mais le produit de dynamiques complexes et différenciées selon les segments de marché. Nos résultats soulignent une hétérogénéité marquée dans la spécificité des métiers : tandis que les assureurs vie voient leur solidité financière portée par la performance des marchés actions, notamment le S&P 500, les assureurs non-vie affichent une vulnérabilité plus prononcée aux fluctuations des taux d’intérêt. Cette sensibilité sectorielle s’inscrit par ailleurs dans une dynamique de marchés globaux où la diversification géographique joue un rôle protecteur prépondérant. L’analyse ARDL met ainsi en lumière que l’exposition au marché américain renforce la solvabilité, là où une concentration sur le marché européen peut constituer un facteur de fragilité. Enfin, bien que la mise en évidence d’une relation de cointégration confirme une stabilité sous tension avec une convergence de long terme, la trajectoire du ratio reste marquée par des oscillations trimestrielles dues à une sur-correction des chocs macroéconomiques. Si ces mécanismes de rappel interne assurent une certaine résilience au secteur, la dépendance aux variables financières demeure majeure. Ces conclusions plaident donc, tant pour les régulateurs que pour les directions financières, en faveur d'une gestion proactive de l'allocation d'actifs et d'une surveillance accrue des cycles de taux, garantissant que la promesse d'indemnisation initiale soit honorée en dépit de la volatilité des marchés.
 
 
 # Annexes
@@ -2099,6 +2092,48 @@ DAX<-indices(monthly_DAX )%>%rename("dax_closed"=closed)
 ## Modélisation
 
 ### Régression en différence
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# Tests KPSS
+liste_variables <- list(
+  "Ratio (différence)" = data_vie$diff_ratio,
+  "SCR (différence)" = data_vie$diff_scr,
+  "Fonds Propres (différence)" = data_vie$diff_fonds_propres,
+  "Taux Court (différence)" = data_final$diff_taux_court,
+  "Taux Long (différence)" = data_final$diff_taux_long,
+  "PIB (différence)" = data_final$diff_pib,
+  "IPC (différence)" = data_final$diff_ipc,
+  "S&P 500 (rendement)" = data_final$rendement_sp500,
+  "Euro Stoxx (rendement)" = data_final$rendement_stoxx,
+  "CAC 40 (rendement)" = data_final$rendement_CAC40
+)
+
+tableau_kpss <- imap_dfr(liste_variables, function(var, nom) {
+  test <- kpss.test(var, null = "Level")
+  tidy(test) %>% 
+    mutate(variable = nom) %>% 
+    select(variable, statistic, p.value)
+})
+
+tableau_kpss %>%
+  mutate(
+    # On arrondit pour plus de lisibilité
+    statistic = round(statistic, 4),
+    # On met en évidence les p-values significatives (ex: p < 0.05)
+    p.value = cell_spec(round(p.value, 3), bold = ifelse(p.value < 0.05, TRUE, FALSE))
+  ) %>%
+  kable(
+    escape = FALSE, 
+    col.names = c("Variable", "Statistique KPSS", "p-value"),
+    align = c("l", "c", "c"),
+    caption = "Résultats des tests de stationnarité KPSS (H0 : Stationnarité)"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 # 1ere specification
