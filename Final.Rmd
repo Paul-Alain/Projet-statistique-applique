@@ -181,8 +181,6 @@ Nous avons réalisé une chronologie des évènements macroéconomiques et macro
 variables macro-financières.
 Nous avons relevé trois grandes phases économiques sur cette période. De 2016 à 2020, les assureurs étaient placés dans un environnement de taux d'intérêt très bas qui a exercé une pression négative sur leur ratio de solvabilité. En effet, les revenus obligataires étaient faibles, ce qui a dégradé leur portefeuille d'investissement et il a été plus difficile pour les assureurs vie d'honorer leurs engagements. Suite à cela, l'économie a subi un retournement et un choc inflationniste pendant les années 2021 et 2022 dû à la reprise économique post-COVID-19 et la crise énergétique. Les taux d'intérêt directeurs de la BCE ont rapidement augmenté et l'inflation s'est considérablement accélérée. Pour les assureurs, la hausse brutale des taux a entraîné des pertes latentes sur leur portefeuille obligataire, entraînant une baisse des fonds propres et donc une dégradation du ratio de solvabilité. Enfin, durant les dernières années 2023 à 2025, l'économie traverse une période d'instabilité financière et géopolitique. Les marchés financiers sont affectés par plusieurs sources de volatilité, notamment une crise bancaire et des tensions géopolitiques toujours dans un contexte inflationniste et de taux d'intérêt élevés. Les portefeuilles des compagnies d'assurance ont perdu en valeur et le SCR de marché a augmenté, détériorant les deux composants du ratio de solvabilité. 
 
-
-
 Cette chronologie nous a permis de noter les variables macro-économiques qui semblent en grande partie impacter la solvabilité et l'activité des assureurs. Ainsi, il a été observé que les taux d'intérêt ont un impact sur la valeur des obligations détenues par les assureurs entrainant des pertes ou plus-values latentes réduisant la valeur de marché de leurs fonds propres. En outre, la rentabilité des portefeuilles obligataires des assureurs est affectée. Dans ce contexte, les assureurs doivent ajuster la duration de leur portefeuille afin de gérer leur exposition au risque de taux. Ces éléments impactent donc le ratio de solvabilité des assureurs. L'inflation impacte elle aussi significativement l'activité des assureurs, à travers une hausse du coût des sinistres pour les assureurs non-vie qui amène les assureurs à ajuster leur tarification et réévaluer leurs provisions à la hausse. L'inflation conduit alors a une baisse de leur résultat technique et leur solvabilité est dégradée. Enfin, la volatilité des marchés financiers entraîne une baisse potentielle de la valeur des portefeuilles actions des assureurs et une augmentation du SCR de marché pour couvrir cette incertitude. Cette combinaison réduit les fonds propres et peut dégrader le ratio de solvabilité.
 
 ## Lecture et analyse des rapports annuels des compagnies d’assurance
@@ -204,23 +202,23 @@ Les assureurs jouent un rôle majeur dans le système financier en tant qu’inv
 
 **Impact des taux d’intérêt et du marché obligataire sur la solvabilité des assureurs**
 
-La longue durée des engagements d’assurance rend ces entreprises particulièrement sensibles à la structure par terme des taux. Les stress tests réalisés par l’EIOPA mettent en évidence une forte sensibilité des entreprises européennes d’assurance aux chocs de marché, révélant l’exposition directe du SCR aux variations de taux. L’environnement prolongé de taux bas a exercé une pression sur la solvabilité et la rentabilité des assureurs notamment à travers leurs fonds propres. La réévaluation des primes de risques suite à la remontée des taux peut ainsi entraîner des pertes importantes dans les portefeuilles obligataires, affectant le ratio de solvabilité (EIOPA, 2018) [1].
-Dans le cadre de Solvabilité II, la courbe des taux sans risque utilisée pour actualiser les flux futurs constitue un élément central dans le calcul des provisions Best Estimates. Un abaissement durable de cette courbe entraîne une hausse des provisions, particulièrement pour les passifs de longue duration, ce qui réduit mécaniquement les fonds propres disponibles (Aalala, 2021) [7].
-Par ailleurs, Berdin et Gründl (2015) [2] montrent qu’un environnement de faibles taux peut conduire les assureurs à accroître leur exposition à des actifs plus risqués afin de compenser la faiblesse des rendements. Cette réallocation accroît la sensibilité du bilan aux variations de taux d’intérêt. Ces travaux confirment que la gestion actif-passif et la duration des portefeuilles constituent des éléments centraux dans la maîtrise du risque de solvabilité.
-Enfin, Poufinas et Siopi (2024) [3] mettent en évidence une relation inverse entre le développement du marché obligataire et le ratio de solvabilité. Un
+La longue durée des engagements d’assurance rend ces entreprises particulièrement sensibles à la structure par terme des taux. Les stress tests réalisés par l’EIOPA mettent en évidence une forte sensibilité des entreprises européennes d’assurance aux chocs de marché, révélant l’exposition directe du SCR aux variations de taux. L’environnement prolongé de taux bas a exercé une pression sur la solvabilité et la rentabilité des assureurs notamment à travers leurs fonds propres. La réévaluation des primes de risques suite à la remontée des taux peut ainsi entraîner des pertes importantes dans les portefeuilles obligataires, affectant le ratio de solvabilité (EIOPA, 2018) [8].
+Dans le cadre de Solvabilité II, la courbe des taux sans risque utilisée pour actualiser les flux futurs constitue un élément central dans le calcul des provisions Best Estimates. Un abaissement durable de cette courbe entraîne une hausse des provisions, particulièrement pour les passifs de longue duration, ce qui réduit mécaniquement les fonds propres disponibles (Aalala, 2021) [1].
+Par ailleurs, Berdin et Gründl (2015) [6] montrent qu’un environnement de faibles taux peut conduire les assureurs à accroître leur exposition à des actifs plus risqués afin de compenser la faiblesse des rendements. Cette réallocation accroît la sensibilité du bilan aux variations de taux d’intérêt. Ces travaux confirment que la gestion actif-passif et la duration des portefeuilles constituent des éléments centraux dans la maîtrise du risque de solvabilité.
+Enfin, Poufinas et Siopi (2024) [13] mettent en évidence une relation inverse entre le développement du marché obligataire et le ratio de solvabilité. Un
 marché obligataire plus développé se caractérise par une meilleure liquidité et une meilleure stabilité, conduisant à une hausse de la demande en obligations et accroit leur prix. Cette appréciation de la valeur des obligations peut accroître l’exposition au risque de crédit et de spread, augmentant ainsi le capital réglementaire requis.
 
 **Impact du marché actions, de la volatilité et des corrélations de marché**
 
 L’exposition des compagnies d’assurance au marché actions s’est accrue dans un contexte de hausse des taux et d’inflation élevée. Face à cette remontée des taux, l’EIOPA observe une réallocation partielle des portefeuilles vers des actifs plus risqués, notamment les actions, afin de préserver le rendement, au prix d’un besoin accru en capital réglementaire.
-Les travaux de Baranoff et Sager (2002) [11] montrent qu’une exposition accrue aux risques financiers, notamment actions, crédit et taux, s’accompagne d’un niveau de capital requis plus élevé afin d’absorber la volatilité des marchés. Les fluctuations de la valeur de marché affectent directement les fonds propres et introduisent une volatilité significative dans le ratio de solvabilité (Rapport ACM 2023) [6].
-Dans cette logique, les travaux de Pénasse et Dezorme (2021) [5] mettent en évidence un arbitrage entre le rendement espéré des actions et le surplus de SCR imposé par Solvabilité II.
+Les travaux de Baranoff et Sager (2002) [4] montrent qu’une exposition accrue aux risques financiers, notamment actions, crédit et taux, s’accompagne d’un niveau de capital requis plus élevé afin d’absorber la volatilité des marchés. Les fluctuations de la valeur de marché affectent directement les fonds propres et introduisent une volatilité significative dans le ratio de solvabilité (Rapport ACM 2023) [2].
+Dans cette logique, les travaux de Pénasse et Dezorme (2021) [12] mettent en évidence un arbitrage entre le rendement espéré des actions et le surplus de SCR imposé par Solvabilité II.
 
 **Rôle des variables macroéconomiques : inflation et cycle économique**
 
 Au-delà des variables financières, la littérature souligne que la conjoncture macroéconomique, notamment l’inflation et la croissance, exerce un effet significatif sur la solvabilité des assureurs via la profitabilité, le niveau des sinistres et la dynamique des primes.
 Les travaux récents de l’EIOPA montrent que l’inflation exerce une pression négative sur la valeur réelle et le rendement des actifs non indexés ainsi que sur la rentabilité des assureurs. Pour les assureurs non-vie, elle augmente également le coût des sinistres et des charges d’exploitation. Pour les assureurs vie, une inflation inattendue peut rendre les provisions techniques insuffisantes et dégrader la rentabilité technique, ce qui exerce une pression négative sur la solvabilité (EIOPA, 2023) [9].
-L’étude de Gonji et al. (2020) [10] met également en évidence un impact du taux d’inflation et du PIB sur la croissance et la rentabilité des compagnies d’assurance. Une croissance économique soutenue favorise généralement la demande d’assurance et la capacité des assureurs à générer des fonds propres, tandis qu’un ralentissement économique peut dégrader la qualité des actifs et peser sur le ratio de solvabilité.
+L’étude de Gonji et al. (2020) [7] met également en évidence un impact du taux d’inflation et du PIB sur la croissance et la rentabilité des compagnies d’assurance. Une croissance économique soutenue favorise généralement la demande d’assurance et la capacité des assureurs à générer des fonds propres, tandis qu’un ralentissement économique peut dégrader la qualité des actifs et peser sur le ratio de solvabilité.
 
 Dans l'ensemble, la littérature met en évidence le rôle central des variables macro-financières dans la dynamique de solvabilité, avec des effets différenciés selon les branches. Les assureurs vie apparaissent généralement plus sensibles aux taux et aux marchés financiers en raison de la longue duration de leurs engagements, tandis que la branche non-vie semble davantage influencée par l'inflation et le cycle d'exploitation.
 
@@ -2679,3 +2677,44 @@ Cette variable indique la périodicité de la donnée :
 - **A** : remise annuelle.
 
 Dans le jeu de données, certaines années ne contiennent pas toutes les remises, ce qui traduit simplement des différences de disponibilité des données selon les périodes.
+
+\newpage
+# Bibliographie
+
+\newpage
+# Bibliographie
+
+\newpage
+\section*{Bibliographie}
+
+\begin{description}
+    \item[[1]] \textbf{S. Aalala}, (2021). \textit{Revue 2020 Solvabilité II : Impact du changement de l'extrapolation des taux sans risque. Mémoire d'actuariat, Institut des Actuaires.}
+    
+    \item[[2]] \textbf{Assurances Crédit Mutuel}, (2023). \textit{Rapport sur la solvabilité et la situation financière.}
+    
+    \item[[3]] \textbf{Banque de France}, (2023). \textit{L'adaptation des assureurs à la hausse de l'inflation.}
+    
+    \item[[4]] \textbf{G. Baranoff et W. Sager}, (2002). \textit{"The relations among asset risk product risk, and Capital in the life insurance industry". Journal of Banking and Finance, Vol. 26.}[cite: 1]
+    
+    \item[[5]] \textbf{G. Bonccolto, N. Borri, A. Consiglio et G. Di Giorgio}, (2025). \textit{Systemic Risk in the European Insurance Sector.}[cite: 1]
+    
+    \item[[6]] \textbf{E. Berdin et H. Gründl}, (2015). \textit{"The Effects of a Low Interest Rate Environment on Life Insurers". Geneva Papers on Risk and Insurance, Vol. 40, No. 3.}[cite: 1]
+    
+    \item[[7]] \textbf{B. Gonji, J. Ahan, M. Zamdayu et J. Pam}, (2020). \textit{"Impact of macroeconomic variables on the growth of insurance companies in Nigeria". Discovery, 56(297).}[cite: 1]
+    
+    \item[[8]] \textbf{EIOPA}, (2018). \textit{Annual Report.}[cite: 1]
+    
+    \item[[9]] \textbf{EIOPA-BOS-23/360}, (2023). \textit{Impact of inflation on the insurance sector.}[cite: 1]
+    
+    \item[[10]] \textbf{EIOPA}, (2024). \textit{Financial Stability Report.}[cite: 1]
+    
+    \item[[11]] \textbf{FORSIDES}, (janvier 2026). \textit{Rétrospective 2025.}
+    
+    \item[[12]] \textbf{J. Pénasse et F. Dezorme}, (2021). \textit{Comment la directive Solvabilité II impacte-elle la détention en actions des assureurs vie ? Rapport technique, Institut des Actuaires.}[cite: 1]
+    
+    \item[[13]] \textbf{T. Poufinas et E. Siopi}, (2024). \textit{"Investment Portfolio Allocation and Insurance Solvency". MDPI.}[cite: 1]
+    
+    \item[[14]] \textbf{P. Roulland}, (2017). \textit{Déviation du profil de risque d'une institution de prévoyance par rapport aux hypothèses de calcul du SCR en formule standard. Mémoire d'actuariat, ISFA.}[cite: 1]
+    
+    \item[[15]] \textbf{Commission européenne}, (2015). \textit{Solvency II : Overview.}[cite: 1]
+\end{description}
