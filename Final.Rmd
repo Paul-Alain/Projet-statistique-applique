@@ -101,6 +101,9 @@ Le SCR (*Solvency Capital Requirement*) représente l’exigence en fonds propre
 
 $$SCR = BSCR + SCR_{op} - Adj$$
 
+- **BSCR (Basic Solvency Capital Requirement)** : capital requis de base qui agrège les principaux risques en tenant compte de leur diversification.
+- **SCR opérationnel** : capital requis couvrant les pertes potentielles liées aux risques opérationnels.
+
 Le BSCR (*Basic SCR*) agrège les SCR par type de risque à l’aide d’une matrice de corrélation. L’Adj représente la capacité d’absorption des pertes par les provisions techniques et les impôts différés. Chaque SCR élémentaire correspond à la perte de fonds propres résultant d’un choc instantané calibré par l’EIOPA.
 
 $$BSCR = \sqrt{\sum_{i,j} Corr_{i,j} \cdot SCR_i \cdot SCR_j} + SCR_{intangibles}$$
@@ -185,12 +188,12 @@ Cette chronologie nous a permis de noter les variables macro-économiques qui se
 
 ## Lecture et analyse des rapports annuels des compagnies d’assurance
 
-Dans cette partie, nous avons parcouru un ensemble de rapports sur la solvabilité et la situation financière de plusieurs compagnies d’assurance entre 2019 et 2025 afin d’approfondir la compréhension des mécanismes par lesquels les variables macroéconomiques et macro-financières affectent la solvabilité des assureurs. Nous nous sommes concentrés uniquement sur les parties des rapports annuels qui traitent de la solvabilité en nous focalisant sur :
+Nous avons parcouru un ensemble de rapports sur la solvabilité et la situation financière de plusieurs compagnies d’assurance entre 2019 et 2025 afin d’approfondir la compréhension des mécanismes par lesquels les variables macroéconomiques et macro-financières affectent la solvabilité des assureurs. Nous nous sommes concentrés uniquement sur les parties des rapports annuels qui traitent de la solvabilité en nous focalisant sur :
 
 - la variation des SCR, des fonds propres et des ratios de solvabilité ;
 - la variation des variables macro-financières.
 
-Dans un second temps, nous avons mis ces évolutions en relation avec la chronologie macroéconomique établie précédemment afin de mieux comprendre le lien entre la conjoncture économique et la situation des assureurs. Cette comparaison montre plusieurs éléments importants. D’abord, l’inflation pénalise particulièrement les assureurs non-vie, car elle augmente le coût des sinistres, des réparations et, plus généralement, des charges techniques. Elle réduit donc leurs marges, pèse sur le résultat net et peut aussi conduire à renforcer les provisions. Les assureurs vie sont également touchés, mais de façon différente : l’inflation diminue le rendement réel des placements et rend certains produits d’épargne concurrents plus attractifs, ce qui peut freiner la collecte et réduire la rentabilité des contrats.
+Dans un second temps, nous avons mis ces évolutions en relation avec la chronologie macroéconomique établie précédemment afin de mieux comprendre le lien entre la conjoncture économique et la situation des assureurs. Cette comparaison montre plusieurs éléments importants. D’abord, l’inflation pénalise particulièrement les assureurs non-vie, car elle augmente le coût des sinistres, des réparations et, plus généralement, des charges techniques. Elle réduit donc leurs marges, pèse sur le résultat net et peut aussi conduire à renforcer les provisions. Les assureurs vie sont également touchés, mais de façon différente : l’inflation diminue le rendement réel des placements et pousse les assurés à se tourner vers d’autres formes d’épargne, notamment l’épargne réglementée, qui devient alors plus attractive, ce qui peut réduire la rentabilité des contrats et freiner la collecte.
 
 Par ailleurs, cette analyse confirme que les taux d’intérêt jouent un rôle central dans la solvabilité des assureurs. Lorsque les taux restent bas, les placements obligataires rapportent moins et les engagements de long terme deviennent plus contraignants, surtout en assurance vie. À l’inverse, la remontée des taux peut alléger certaines charges d’actualisation, mais elle peut aussi entraîner des pertes de valeur sur les actifs détenus. Enfin, la volatilité des marchés financiers a elle aussi un impact important, car elle agit à la fois sur la valeur des actifs, sur les fonds propres et sur le capital requis. Ainsi, les rapports annuels confirment que la solvabilité des assureurs dépend fortement de l’environnement macro-financier, mais aussi de leur exposition aux différents risques et de leur capacité à absorber les chocs.
 
