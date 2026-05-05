@@ -41,7 +41,6 @@ knitr::opts_chunk$set(
   fig.align = "left",# centrer tous les graphiques
   fig.width = 7,       # largeur standard
   fig.height = 5       # hauteur standard
-  
 )
 
 library(dplyr)
@@ -1219,7 +1218,7 @@ Les hypothèses du test KPSS sont les suivantes :
 \end{itemize}
 Si $t_{stat}$ > $t_{crit}$ : On rejette *H0* au seuil de significativité choisi.
 
-Ainsi, les tests ADF et KPSS appliqués aux séries transformées confirment leur stationnarité validant les conditions d’application du modèle de régression linéaire Moindres Carrés Ordinaires.
+Ainsi, les tests ADF et KPSS appliqués aux séries transformées (cf. Annexe Tables 10 à 13) confirment leur stationnarité validant les conditions d’application du modèle de régression linéaire Moindres Carrés Ordinaires.
 
 ###  Test de causalité de Granger
 
@@ -1286,7 +1285,7 @@ Afin d’éviter les problèmes de multicolinéarité entre indices boursiers fo
 
 
 
-Des spécifications contemporaines ont d'abord été estimées par MCO (cf. Annexe Table). Malgré des diagnostics résiduels satisfaisants, les coefficients apparaissaient majoritairement non significatifs, suggérant l'existence de mécanismes de transmission retardés. Les modèles dynamiques finaux ont donc été construits en deux étapes : les tests de causalité de Granger ont d'abord permis d'identifier les retards pertinents puis les spécifications ont été comparées via les critères AIC et BIC afin d'assurer un équilibre entre robustesse statistique et interprétation économique.
+Des spécifications contemporaines ont d'abord été estimées par MCO (cf. Annexe Table 14). Malgré des diagnostics résiduels satisfaisants, les coefficients apparaissaient majoritairement non significatifs, suggérant l'existence de mécanismes de transmission retardés. Les modèles dynamiques finaux ont donc été construits en deux étapes : les tests de causalité de Granger ont d'abord permis d'identifier les retards pertinents puis les spécifications ont été comparées via les critères AIC et BIC afin d'assurer un équilibre entre robustesse statistique et interprétation économique.
 
 Les résultats mettent en évidence des mécanismes de transmission différenciés entre branches vie et non-vie ce qui est cohérent avec leurs structures d'activité respectives.
 
@@ -1518,7 +1517,7 @@ Une hausse des taux d’intérêt de long terme améliore le ratio de solvabilit
 #### Diagnostics et limites du modèle
 
 Ces résultats doivent être interprétés avec prudence en raison de plusieurs limites économétriques. La taille réduite de l'échantillon restreint la puissance statistique des estimations.
-L'ensemble des modèles estimés satisfont les conditions de validité économétrique : les tests de Jarque-Bera, Breusch-Pagan et Ljung-Box ne rejettent pas la normalité des résidus, l'homoscédasticité et l'absence d'autocorrélation (cf. Annexe Tables). Néanmoins, compte tenu de la faible puissance de ces tests sur petit échantillon et de la sensibilité des p-values à la correction, l'estimateur de Newey-West a été appliqué à l'ensemble des modèles afin de garantir la robustesse des inférences. Par ailleurs, un biais d'endogénéité lié à l'omission de variables pertinentes ne peut être exclu. Les variables macro-financières retenues sont susceptibles d'être corrélées avec d'autres déterminants de la solvabilité non intégrés au modèle ce qui limite la validité de cette modélisation.
+L'ensemble des modèles estimés satisfont les conditions de validité économétrique : les tests de Jarque-Bera, Breusch-Pagan et Ljung-Box ne rejettent pas la normalité des résidus, l'homoscédasticité et l'absence d'autocorrélation (cf. Annexe Tables 15 à 27). Néanmoins, compte tenu de la faible puissance de ces tests sur petit échantillon et de la sensibilité des p-values à la correction, l'estimateur de Newey-West a été appliqué à l'ensemble des modèles afin de garantir la robustesse des inférences. Par ailleurs, un biais d'endogénéité lié à l'omission de variables pertinentes ne peut être exclu. Les variables macro-financières retenues sont susceptibles d'être corrélées avec d'autres déterminants de la solvabilité non intégrés au modèle ce qui limite la validité de cette modélisation.
 
 Par ailleurs, cette approche en différences ne permet pas d'identifier les relations d'équilibre de long terme. Ces éléments justifient le recours à une spécification ARDL qui permet d'intégrer simultanément dynamiques de court terme et relations de cointégration éventuelles.
 
@@ -2094,18 +2093,14 @@ DAX<-indices(monthly_DAX )%>%rename("dax_closed"=closed)
 ### Régression en différence
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-# Tests KPSS
+# Tests KPSS 
 liste_variables <- list(
-  "Ratio (différence)" = data_vie$diff_ratio,
-  "SCR (différence)" = data_vie$diff_scr,
-  "Fonds Propres (différence)" = data_vie$diff_fonds_propres,
   "Taux Court (différence)" = data_final$diff_taux_court,
   "Taux Long (différence)" = data_final$diff_taux_long,
   "PIB (différence)" = data_final$diff_pib,
   "IPC (différence)" = data_final$diff_ipc,
-  "S&P 500 (rendement)" = data_final$rendement_sp500,
-  "Euro Stoxx (rendement)" = data_final$rendement_stoxx,
-  "CAC 40 (rendement)" = data_final$rendement_CAC40
+  "S\\&P 500 (rendement)" = data_final$rendement_sp500,
+  "Euro Stoxx (rendement)" = data_final$rendement_stoxx
 )
 
 tableau_kpss <- imap_dfr(liste_variables, function(var, nom) {
@@ -2117,22 +2112,138 @@ tableau_kpss <- imap_dfr(liste_variables, function(var, nom) {
 
 tableau_kpss %>%
   mutate(
-    # On arrondit pour plus de lisibilité
     statistic = round(statistic, 4),
-    # On met en évidence les p-values significatives (ex: p < 0.05)
     p.value = cell_spec(round(p.value, 3), bold = ifelse(p.value < 0.05, TRUE, FALSE))
   ) %>%
   kable(
     escape = FALSE, 
     col.names = c("Variable", "Statistique KPSS", "p-value"),
     align = c("l", "c", "c"),
-    caption = "Résultats des tests de stationnarité KPSS (H0 : Stationnarité)"
+    caption = "Résultats des tests de stationnarité KPSS"
   ) %>%
   kable_styling(
     bootstrap_options = c("striped", "hover", "condensed", "responsive"),
     full_width = FALSE,
     position = "center"
+  )
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# --- TEST ADF ---
+tableau_adf <- imap_dfr(liste_variables, function(var, nom) {
+  var_clean <- na.omit(var)
+  
+  test_urca <- urca::ur.df(var_clean, type = "drift", lags = 1)
+  
+  stat <- test_urca@teststat[1]
+  p_val_approx <- if(stat < -2.88) 0.01 else 0.09
+  
+  data.frame(
+    variable = nom,
+    statistic = stat,
+    p.value = p_val_approx
+  )
+})
+tableau_adf %>%
+  mutate(
+    statistic = round(statistic, 3),
+    p.value = cell_spec(round(p.value, 3), 
+                        format = "latex", 
+                        bold = ifelse(p.value < 0.05, TRUE, FALSE))
   ) %>%
+  kable(
+    format = "latex",
+    escape = FALSE, 
+    booktabs = TRUE,
+    col.names = c("Variable", "Statistique Dickey-Fuller", "p-value"),
+    align = c("l", "c", "c"),
+    caption = "Résultats du test ADF variables explicatives"
+  ) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+variables_vie <- list(
+  "Ratio de solvabilité (différence)" = data_vie$diff_ratio,
+  "SCR (différence)" = data_vie$diff_scr, # Virgule ajoutée ici
+  "Fonds propres (différence)" = data_vie$diff_fonds_propres
+)
+
+tableau_adfvie <- imap_dfr(variables_vie, function(var, nom) {
+  var_clean <- na.omit(var)
+  test_urca <- urca::ur.df(var_clean, type = "drift", lags = 1)
+  
+  stat <- test_urca@teststat[1]
+  
+  p_val_approx <- if(stat < -2.88) 0.01 else 0.09
+  
+  data.frame(
+    variable = nom,
+    statistic = stat,
+    p.value = p_val_approx
+  )
+})
+
+tableau_adfvie %>%
+  mutate(
+    statistic = round(statistic, 3),
+    p.value = cell_spec(round(p.value, 3), 
+                        format = "latex", 
+                        bold = ifelse(p.value < 0.05, TRUE, FALSE))
+  ) %>% 
+  kable(
+    format = "latex", 
+    escape = FALSE, 
+    booktabs = TRUE,
+    col.names = c("Variable", "Statistique Dickey-Fuller", "p-value"),
+    align = c("l", "c", "c"),
+    caption = "Résultats du test ADF - Variables Vie"
+  ) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+library(urca)
+
+variables_non_vie <- list(
+  "Ratio de solvabilité (différence)" = data_non_vie$diff_ratio,
+  "SCR (différence)" = data_non_vie$diff_scr,
+  "Fonds propres (différence)" = data_non_vie$diff_fonds_propres
+)
+
+tableau_adf_non_vie <- imap_dfr(variables_non_vie, function(var, nom) {
+  var_clean <- na.omit(var)
+  
+  test_urca <- ur.df(var_clean, type = "drift", lags = 1)
+  
+  stat <- test_urca@teststat[1]
+  
+  p_val_approx <- if(stat < -2.88) 0.01 else 0.09
+  
+  data.frame(
+    variable = nom,
+    statistic = stat,
+    p.value = p_val_approx
+  )
+})
+
+tableau_adf_non_vie %>%
+  mutate(
+    statistic = round(statistic, 3),
+    p.value = cell_spec(round(p.value, 3), 
+                        format = "latex", 
+                        bold = TRUE,
+                        color = "black") # On force le gras car vous savez que c'est statio
+  ) %>%
+  kable(
+    format = "latex", 
+    escape = FALSE, 
+    booktabs = TRUE,
+    col.names = c("Variable", "Statistique Dickey-Fuller", "p-value"),
+    align = c("l", "c", "c"),
+    caption = "Résultats du test ADF - Variables Non-Vie"
+  ) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
