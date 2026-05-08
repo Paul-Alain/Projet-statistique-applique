@@ -9,7 +9,7 @@ output:
 
 \begin{center}
 
-{\Huge Projet de Statistique Appliquée}
+{\Huge Projet de Statistiques Appliquées}
 
 \vspace{1cm}
 
@@ -95,7 +95,7 @@ Le présent travail a donc pour objectif d’évaluer l’impact des variables f
 Cette étude permettra notamment d’apprécier le degré de dépendance de la solvabilité des assureurs vis-à-vis des variables macro-financières.  Elle constitue ainsi, pour France Assureurs, un outil d’analyse et de compréhension de la solvabilité de l’ensemble du secteur, et pourrait être utile aux autorités de régulation prudentielle.
 
 # Cadre macroéconomique et règlementaire
-## Les calculs du SCR
+## Le calcul du SCR
 
 Le SCR (*Solvency Capital Requirement*) représente l’exigence en fonds propres permettant à un assureur de faire face à ses risques sur un horizon d’un an avec une probabilité de 99,5 %, soit l’équivalent d’une faillite théorique tous les 200 ans. Les assureurs peuvent utiliser la formule standard définie par l’EIOPA, un modèle interne propre à leur structure de risque, ou une combinaison des deux (modèle partiel). Le SCR se décompose en trois termes :
 
@@ -475,8 +475,8 @@ theme(legend.position = "bottom") +
 facet_wrap(~ Nature_Group, ncol = 2) # Divise en 2 colonnes
 ```
 Le ratio moyen de solvabilité trimestriel apporte plus d'information sur les variations qu'ont connues les sociétés d'assurance au cours de l'année. On constate donc que le ratio de solvabilité moyen des sociétés oscille avec beaucoup plus d'amplitude que les données annuelles ne le laissent entrevoir. 
-Le ratio moyen trimestriel des sociétés Non Vie varie avec une tendance légèrement baissière  entre **320$\%$** et **250$\%$ **. Il y a également une volatilité qui est décroissante dans le temps.
-Quant au ratio trimestriel moyen des sociétés d'assurances Vie, il est globalement plus faible que celui des sociétés non vie évoluant entre **160$\%$** et **260$\%$**. 
+Le ratio moyen trimestriel des sociétés Non Vie varie avec une tendance légèrement baissière  entre 320$\%$ et 250$\%$. Il y a également une volatilité qui est décroissante dans le temps.
+Quant au ratio trimestriel moyen des sociétés d'assurances Vie, il est globalement plus faible que celui des sociétés non vie évoluant entre 160$\%$ et 260$\%$. 
 Entre 2018 et 2020, on remarque une désynchronisation très forte entre le ratio moyen annuel et trimestriel des sociétés d'assurances vie. 
 
   (ii) **Fonds Propres**
@@ -570,7 +570,7 @@ Pour estimer le SCR moyen au premier trimestre de l’année t, il suffit alors 
 
   (ii) Pour les autres trimestres (T2, T3 et T4)
     
-Le taux de croissance moyen utilisé pour l’imputation correspond au taux de croissance entre la somme des valeurs du trimestre précédent et la somme des valeurs du trimestre que l’on souhaite estimer. Les valeurs estimer du premier trimestre servent à estimer ceux du deuxième, les valeurs de deuxième servent à estimer le troisième et les valeurs du troisième servent à estimer ceux du quatrième.
+Le taux de croissance moyen utilisé pour l’imputation correspond au taux de croissance entre la somme des valeurs du trimestre précédent et la somme des valeurs du trimestre que l’on souhaite estimer.  Les valeurs estimées du premier trimestre servent à estimer celles du deuxième, les valeurs du deuxième servent à estimer le troisième et les valeurs du troisième servent à estimer celles du quatrième.
   
 Supposons que nous souhaitons déterminer le taux de croissance moyen du trimestre i$\in \{2,3,4\}$ de l’année t. Pour cela, nous considèrons l’ensemble $E'$ des sociétés ayant déclaré les valeurs aux trimestres i-1 et i de l’année t. Le taux de croissanse se calcul donc de la manière suivante :
 
@@ -1724,7 +1724,7 @@ $$\begin{aligned}
 
 #### Test des bornes (cointégration)
 
-\
+\vspace{0.3cm}
 
 La première étape de l'analyse consiste à vérifier l'existence d'une relation d'équilibre de long terme entre le ratio de solvabilité et ses déterminants via le test aux bornes (Bounds F-test).
 
@@ -1756,7 +1756,8 @@ kable(
 
 La statistique de Fisher obtenue est de `r round(test_bornes$statistic,2)` avec une p-value de `r round(test_bornes$p.value,4)`. Ce résultat, largement inférieur au seuil de $5 \%$, nous permet de rejeter l'hypothèse nulle d'absence de cointégration. Il existe donc une relation stable et non fallacieuse entre ces variables sur le long terme, ce qui valide l'utilisation du modèle ARDL pour analyser la dynamique du ratio.
 
-#### Coefficients de long terme\newline 
+#### Coefficients de long terme
+\vspace{0.3cm}
 
 ```{r , comment = ""}
 # --- COEFFICIENTS DE LONG TERME (MULTIPLIERS) ---
@@ -1786,7 +1787,7 @@ Le ratio de solvabilité des sociétés d'assurances est structurellement lié a
 
 #### Dynamique de court terme
 
-\
+\vspace{0.3cm}
 
 Pour estimer la dynamique de court terme, on réecrit le modèle sous la forme de correction d'erreur. L'estimation du modèle sous sa forme non contrainte à correction d'erreur permet d'analyser la vitesse à laquelle le ratio de solvabilité s'ajuste après un choc exogène. Il s'agit d'un transformation algébrique de l'équation de base du modèle : 
 
