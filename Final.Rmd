@@ -1724,7 +1724,7 @@ $$\begin{aligned}
 
 #### Test des bornes (cointégration)
 
-\vspace{0.3cm}
+\
 
 La première étape de l'analyse consiste à vérifier l'existence d'une relation d'équilibre de long terme entre le ratio de solvabilité et ses déterminants via le test aux bornes (Bounds F-test).
 
@@ -1757,7 +1757,8 @@ kable(
 La statistique de Fisher obtenue est de `r round(test_bornes$statistic,2)` avec une p-value de `r round(test_bornes$p.value,4)`. Ce résultat, largement inférieur au seuil de $5 \%$, nous permet de rejeter l'hypothèse nulle d'absence de cointégration. Il existe donc une relation stable et non fallacieuse entre ces variables sur le long terme, ce qui valide l'utilisation du modèle ARDL pour analyser la dynamique du ratio.
 
 #### Coefficients de long terme
-\vspace{0.3cm}
+
+\
 
 ```{r , comment = ""}
 # --- COEFFICIENTS DE LONG TERME (MULTIPLIERS) ---
@@ -1787,7 +1788,7 @@ Le ratio de solvabilité des sociétés d'assurances est structurellement lié a
 
 #### Dynamique de court terme
 
-\vspace{0.3cm}
+\
 
 Pour estimer la dynamique de court terme, on réecrit le modèle sous la forme de correction d'erreur. L'estimation du modèle sous sa forme non contrainte à correction d'erreur permet d'analyser la vitesse à laquelle le ratio de solvabilité s'ajuste après un choc exogène. Il s'agit d'un transformation algébrique de l'équation de base du modèle : 
 
