@@ -278,15 +278,15 @@ df$Anne <- as.factor(df$Annee)
 
 df_scr_nat <- df %>%
   group_by(Anne, Nature) %>%
-  summarise(scr_moy = mean(SCR, na.rm = TRUE), .groups = "drop")
+  summarise(fp_moy = mean(`FONDS PROPRES`, na.rm = TRUE), .groups = "drop")
 
-ggplot(df_scr_nat, aes(x = Anne, y = scr_moy, color = Nature, group = Nature)) +
+ggplot(df_scr_nat, aes(x = Anne, y = fp_moy, color = Nature, group = Nature)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Évolution du SCR moyen par Nature ",
+    title = "Évolution des fonds propres moyens par Nature ",
     x = "Année",
-    y = "SCR moyen",
+    y = "Fonds propres",
     color = "Nature"
   ) +
   theme_minimal(base_size = 14) +
@@ -329,15 +329,15 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
 
 df_scr_fam <- df %>%
   group_by(Anne, Famille) %>%
-  summarise(scr_moy = mean(SCR, na.rm = TRUE), .groups = "drop")
+  summarise(fp_moy = mean(`FONDS PROPRES`, na.rm = TRUE), .groups = "drop")
 
-ggplot(df_scr_fam, aes(x = Anne, y = scr_moy, color = Famille, group = Famille)) +
+ggplot(df_scr_fam, aes(x = Anne, y = fp_moy, color = Famille, group = Famille)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Évolution du SCR moyen par Famille",
+    title = "Évolution des fonds propres moyens par Famille",
     x = "Année",
-    y = "SCR moyen",
+    y = "fonds propres ",
     color = "Famille"
   ) +
   theme_minimal(base_size = 14) +
