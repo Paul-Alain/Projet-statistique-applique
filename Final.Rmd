@@ -274,13 +274,13 @@ ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nat
 En ce qui concerne l’évolution des fonds propres  par nature, la catégorie des réassureurs se distingue  par une moyenne constamment au dessus de celle des autres à partir de $2018$ et aussi par une tendance  croissante entre $2016$ et $2023$, suivie d’un recul marqué jusqu’en $2025$. À l’inverse, les autres catégories présentent des niveaux moyens relativement stables sur l’ensemble de la période étudiée, sans variation structurelle notable. 
 ```{r}
 
-df$Annee <- as.factor(df$Annee)
+df$Anne <- as.factor(df$Annee)
 
 df_scr_nat <- df %>%
-  group_by(Annee, Nature) %>%
+  group_by(Anne, Nature) %>%
   summarise(scr_moy = mean(SCR, na.rm = TRUE), .groups = "drop")
 
-ggplot(df_scr_nat, aes(x = Annee, y = scr_moy, color = Nature, group = Nature)) +
+ggplot(df_scr_nat, aes(x = Anne, y = scr_moy, color = Nature, group = Nature)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
@@ -328,10 +328,10 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
 ```{r}
 
 df_scr_fam <- df %>%
-  group_by(Annee, Famille) %>%
+  group_by(Anne, Famille) %>%
   summarise(scr_moy = mean(SCR, na.rm = TRUE), .groups = "drop")
 
-ggplot(df_scr_fam, aes(x = Annee, y = scr_moy, color = Famille, group = Famille)) +
+ggplot(df_scr_fam, aes(x = Anne, y = scr_moy, color = Famille, group = Famille)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
