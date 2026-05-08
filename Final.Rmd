@@ -272,7 +272,7 @@ ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nat
 ```
 
 En ce qui concerne l’évolution des fonds propres  par nature, la catégorie des réassureurs se distingue  par une moyenne constamment au dessus de celle des autres à partir de $2018$ et aussi par une tendance  croissante entre $2016$ et $2023$, suivie d’un recul marqué jusqu’en $2025$. À l’inverse, les autres catégories présentent des niveaux moyens relativement stables sur l’ensemble de la période étudiée, sans variation structurelle notable. 
-```{r}
+```{r, out.width='60%', fig.align='center'}
 
 df$Anne <- as.factor(df$Annee)
 
@@ -325,7 +325,7 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
 
 
 
-```{r}
+```{r, out.width='60%', fig.align='center'}
 
 df_scr_fam <- df %>%
   group_by(Anne, Famille) %>%
