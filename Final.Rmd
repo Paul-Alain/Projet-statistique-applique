@@ -9,13 +9,13 @@ output:
 
 \begin{center}
 
-{\Huge Projet de statistique et science des données appliquées}
+{\Huge L'impact des variables financières et macroéconomiques sur la solvabilité des entreprises d'assurance}
 
 \vspace{1cm}
 
-{\Large ENSAE Paris}
+{\Large Projet de statistique et science des données appliquées}
 
-\vspace{2cm}
+\vspace{1cm}
 
 Chiara FRASSU \\
 Mac Kingsley Fodjo KAMGA \\
@@ -27,6 +27,10 @@ Gugan SELVARADJOU \\
 Encadré par Myriam LÉVY et Alexandre VINCENT - France Assureurs
 
 \vspace{2cm}
+
+{\Large ENSAE Paris}
+
+\vspace{1cm}
 
 Année universitaire 2025–2026
 
