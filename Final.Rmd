@@ -284,7 +284,7 @@ ggplot(df_scr_nat, aes(x = Anne, y = fp_moy, color = Nature, group = Nature)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Évolution des fonds propres moyens par Nature ",
+    title = "Évolution des fonds propres moyens (en euros) par Nature ",
     x = "Année",
     y = "Fonds propres",
     color = "Nature"
@@ -335,7 +335,7 @@ ggplot(df_scr_fam, aes(x = Anne, y = fp_moy, color = Famille, group = Famille)) 
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Évolution des fonds propres moyens par Famille",
+    title = "Évolution des fonds propres moyens (en euros) par Famille",
     x = "Année",
     y = "Fonds propres ",
     color = "Famille"
