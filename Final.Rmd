@@ -83,16 +83,18 @@ df_orig<-df
 # Introduction
 
 
-L’activité d’assurance repose sur un mécanisme de production inversé : l’assureur perçoit les primes avant de connaître avec certitude le montant réel des dépenses qu’il devra engager. En effet, il est lié à l’assuré par une promesse d’indemnisation en cas de réalisation du risque couvert. Le maintien d’un tel système nécessite donc des dispositifs de contrôle de la capacité des assureurs à honorer leurs engagements. C’est dans cette perspective que s’inscrit le cadre réglementaire de Solvabilité II, entré en vigueur en 2016, dont l’objectif principal est de garantir que les compagnies d’assurance disposent de fonds propres suffisants pour faire face à leurs obligations et ainsi instaurer un climat de confiance entre assureurs et assurés. 
+L’activité d’assurance repose sur un mécanisme de production inversé : l’assureur perçoit les primes avant de connaître avec certitude le montant réel des dépenses qu’il devra engager. En effet, l'assureur est lié à l’assuré par une promesse d’indemnisation en cas de réalisation du risque couvert. Le maintien d’un tel système nécessite donc des dispositifs de contrôle de la capacité des assureurs à honorer leurs engagements. C’est dans cette perspective que s’inscrit le cadre réglementaire de Solvabilité II, entré en vigueur en 2016, dont l’objectif principal est de garantir que les compagnies d’assurance disposent de fonds propres suffisants pour faire face à leurs obligations et ainsi instaurer un climat de confiance entre assureurs et assurés. 
 
 
-La solvabilité d’une compagnie d’assurance désigne sa capacité à respecter ses engagements financiers à court, moyen et long terme, notamment en matière de règlement des sinistres et de prestations contractuelles. Elle constitue ainsi un indicateur fondamental de la solidité financière des assureurs. Toutefois, cette solvabilité demeure fortement influencée par l’environnement économique et financier. Par exemple, une hausse du taux d’inflation peut entraîner une augmentation mécanique du coût des sinistres, tandis qu’une variation des taux d’intérêt affecte à la fois les perspectives de rendement des placements financiers et la valorisation des obligations détenues par les compagnies d’assurance.
+La solvabilité d’une compagnie d’assurance correspond à sa capacité à respecter ses engagements financiers à court, moyen et long terme, notamment en matière de règlement des sinistres et de prestations contractuelles. Elle constitue ainsi une composante fondamentale de la solidité financière des assureurs. Toutefois, cette solvabilité demeure fortement influencée par l’environnement économique et financier. Par exemple, une hausse du taux d’inflation peut entraîner une augmentation mécanique du coût des sinistres, tandis qu’une variation des taux d’intérêt affecte à la fois les perspectives de rendement des placements financiers et la valorisation des obligations détenues par les compagnies d’assurance.
 
 
-Dans un contexte marqué par la volatilité des marchés financiers, les risques de perturbation des chaînes de valeur économiques, ainsi que le renforcement des exigences prudentielles, il devient essentiel de mieux comprendre les déterminants de la solvabilité des entreprises d’assurance. Cette problématique est d’autant plus importante que la stabilité et la pérennité du secteur assurantiel en dépendent directement.
+Dans un contexte marqué par la volatilité des marchés financiers, les risques de perturbation des chaînes de valeur économiques, ainsi que le renforcement des exigences prudentielles, il devient essentiel de mieux comprendre les déterminants de la solvabilité des entreprises d’assurance. Cette problématique est d’autant plus importante que la stabilité  du secteur assurantiel en dépendend directement.
 
 
-Le présent travail a donc pour objectif d’évaluer l’impact des variables financières et macroéconomiques sur la solvabilité des entreprises d’assurance en France. Plus précisément, il s’agira d’identifier les variables les plus significatives et de mesurer leur influence sur la solidité financière des assureurs. La résolution de cette problématique reposera sur la mobilisation d’outils économétriques appliqués à des données financières, macroéconomiques et à des indicateurs de solvabilité propres au secteur de l’assurance. Cette étude permettra notamment d’apprécier le degré de dépendance de la solvabilité des assureurs Français vis-à-vis des variables macro-financières. Elle constitue ainsi, pour France Assureurs, un outil d’analyse et de compréhension de la solvabilité de l’ensemble du secteur, et pourrait être utile aux autorités de régulation prudentielle.  
+Le présent travail a donc pour objectif d’évaluer l’impact des variables financières et macroéconomiques sur la solvabilité des entreprises d’assurance en France. Plus précisément, il s’agira d’identifier les variables les plus significatives et de mesurer leur influence sur la solidité financière des assureurs. La résolution de cette problématique reposera sur la mobilisation d’outils économétriques appliqués à des données financières, macroéconomiques et à des indicateurs de solvabilité propres au secteur de l’assurance. Cette étude permettra notamment d’apprécier le degré de dépendance de la solvabilité des assureurs Français vis-à-vis des variables macro-financières. Elle constitue ainsi, pour France Assureurs, un outil d’analyse et de compréhension de la solvabilité de l’ensemble du secteur, et pourrait être utile aux autorités de régulation prudentielle
+
+\newpage
 
 # Cadre macroéconomique et règlementaire
 ## Le calcul du SCR
@@ -244,7 +246,7 @@ Cette section est consacrée à l’analyse univariée des variables, visant à 
 ### Répartition des compagnies selon leur nature
 
 
-L’activité d’assurance non-vie concentre la majorité des compagnies du marché. À l’inverse, les Fonds de Retraite et de Prévoyance Sociale (FRPS) demeurent très faiblement représentés, avec une part limitée à $0,91 \%$. De même, le segment de la réassurance ne regroupe qu’une fraction marginale des compagnies d’assurance, soit $2,56 \%$.
+L’activité d’assurance non-vie concentre la majorité des compagnies de notre base de données. À l’inverse, les Fonds de Retraite et de Prévoyance Sociale (FRPS) demeurent très faiblement représentés, avec une part limitée à $0,91 \%$. De même, le segment de la réassurance ne regroupe qu’une fraction marginale des compagnies d’assurance, soit $2,56 \%$.
 
 ```{r, out.width='60%', fig.align='center'}
 # Percentage computation
@@ -268,6 +270,31 @@ ggplot(df_pct, aes(x = reorder(Nature, Pourcentage), y = Pourcentage, fill = Nat
   scale_fill_brewer(palette = "Set2")+
   labs(caption = "Source: France Assureurs")
 ```
+
+En ce qui concerne l’évolution des fonds propres  par nature, la catégorie des réassureurs se distingue  par une moyenne constamment au dessus de celle des autres à partir de $2018$ et aussi par une tendance  croissante entre $2016$ et $2023$, suivie d’un recul marqué jusqu’en $2025$. À l’inverse, les autres catégories présentent des niveaux moyens relativement stables sur l’ensemble de la période étudiée, sans variation structurelle notable. 
+```{r}
+
+df$Annee <- as.factor(df$Annee)
+
+df_scr_nat <- df %>%
+  group_by(Annee, Nature) %>%
+  summarise(scr_moy = mean(SCR, na.rm = TRUE), .groups = "drop")
+
+ggplot(df_scr_nat, aes(x = Annee, y = scr_moy, color = Nature, group = Nature)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Évolution du SCR moyen par Nature ",
+    x = "Année",
+    y = "SCR moyen",
+    color = "Nature"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom") +
+  labs(caption = "Source : France Assureurs")
+```
+
+
 
 ### Répartition des compagnies par famille
 
@@ -295,12 +322,39 @@ ggplot(df_pct, aes(x = reorder(Famille, Pourcentage), y = Pourcentage, fill = Fa
   labs(caption = "Source: France Assureurs")
 ```
 
-## Analyse bivarariée
 
 
-À l’exception du segment de la réassurance, les organismes mutualistes apparaissent comme majoritairement représentés dans l’ensemble des regroupements par nature d’activité. Leur part relative demeure plus élevée que celle des bancassureurs et des assureurs traditionnels, tant dans les catégories des prestataires d’assurance non-vie que dans celles de l’assurance vie et de la capitalisation. En revanche, le secteur de la réassurance est dominé par les assureurs traditionnels, lesquels représentent $71,7\%$ des acteurs recensés. Il convient également de souligner que seuls les organismes mutualistes et les assureurs traditionnels interviennent dans la fourniture de fonds de retraite et de prévoyance sociale (FRSP). Enfin, la répartition des différentes familles d’assureurs apparaît globalement équilibrée dans les activités mixtes combinant assurance vie et assurance non-vie.
 
-Dans un soucis d'avoir des données de taille comparable entre les catégorie mixte, non-vie et vie, nous avons fusionné les catégories mixte et vie.
+```{r}
+
+df_scr_fam <- df %>%
+  group_by(Annee, Famille) %>%
+  summarise(scr_moy = mean(SCR, na.rm = TRUE), .groups = "drop")
+
+ggplot(df_scr_fam, aes(x = Annee, y = scr_moy, color = Famille, group = Famille)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Évolution du SCR moyen par Famille",
+    x = "Année",
+    y = "SCR moyen",
+    color = "Famille"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom") +
+  labs(caption = "Source : France Assureurs")
+```
+Par ailleurs, les fonds propres moyens évoluent de manière globalement parallèle au sein des bancassureurs, des mutuelles et des compagnies traditionnelles, avec une tendance haussière sur l’ensemble de la période étudiée. Toutefois, les bancassureurs se distinguent par un niveau de fonds propres moyens constamment plus élevé que celui des deux autres catégories.
+
+
+
+
+## Analyse bivariée
+
+
+À l’exception du segment de la réassurance, les organismes mutualistes apparaissent comme majoritairement représentés dans l’ensemble des regroupements par nature d’activité. Leur part relative demeure plus élevée que celle des bancassureurs et des assureurs traditionnels, tant dans les catégories des prestataires d’assurance non-vie que dans celles de l’assurance vie et de la capitalisation. En revanche, le secteur de la réassurance est dominé par les assureurs traditionnels, lesquels représentent $71,7\%$ des acteurs recensés. Il convient également de souligner que seuls les organismes mutualistes et les assureurs traditionnels interviennent dans la fourniture de fonds de retraite et de prévoyance sociale (FRPS). Enfin, la répartition des différentes familles d’assureurs apparaît globalement équilibrée dans les activités mixtes combinant assurance vie et assurance non-vie.
+
+Dans un souci d'avoir des données de taille comparable entre les catégorie examinées, nous avons fusionné les catégories mixte et vie.
 
 ```{r, out.width='60%', fig.align='center'}
 ## Crossed distribution
@@ -1854,7 +1908,9 @@ Malgré la robustesse des diagnostics, plusieurs limites méthodologiques doiven
 
 # Conclusion
 
-Cette étude démontre que la solvabilité des assureurs n’est pas une donnée statique, mais le produit de dynamiques complexes et différenciées selon les segments de marché. Nos résultats soulignent une hétérogénéité marquée dans la spécificité des métiers : tandis que les assureurs Vie voient leur solidité financière portée par la performance des marchés actions, notamment le S&P 500, les assureurs Non-Vie affichent une vulnérabilité plus prononcée aux fluctuations des taux d’intérêt. Cette sensibilité sectorielle s’inscrit par ailleurs dans une dynamique de marchés globaux où la diversification géographique joue un rôle protecteur prépondérant. L’analyse ARDL met ainsi en lumière qu'une diversification du portefeuille via l'exposition au marché d'action américain renforce la solvabilité, là où une concentration sur le marché européen peut constituer un facteur de fragilité. Enfin, bien que la mise en évidence d’une relation de cointégration confirme une stabilité sous tension avec une convergence de long terme, la trajectoire du ratio reste marquée par des oscillations trimestrielles dues à une sur-correction des chocs macroéconomiques sur la période etudié. Si ces mécanismes de rappel interne assurent une certaine résilience au secteur, la dépendance aux variables financières demeure majeure. Ces conclusions plaident donc en faveur d'une gestion proactive de l'allocation d'actifs et d'une surveillance accrue des cycles de taux, garantissant que la promesse d'indemnisation initiale soit honorée en dépit de la volatilité des marchés.
+Cette étude montre que la solvabilité des assureurs n’est pas une donnée statique, mais le produit de dynamiques complexes et différenciées selon les segments de marché. Nos résultats soulignent une hétérogénéité marquée dans la spécificité des métiers : tandis que les assureurs Vie voient leur solidité financière portée par la performance des marchés actions, notamment le S&P 500, les assureurs Non-Vie affichent une vulnérabilité plus prononcée aux fluctuations des taux d’intérêt. Cette sensibilité sectorielle s’inscrit par ailleurs dans une dynamique de marchés globaux où la diversification géographique joue un rôle protecteur prépondérant. L’analyse ARDL met ainsi en lumière, sur la période considérée, qu'une  l'exposition au marché d'action américain renforce la solvabilité, là où une concentration sur le marché européen peut constituer un facteur de fragilité. Enfin, bien que la mise en évidence d’une relation de cointégration confirme une stabilité sous tension avec une convergence de long terme, la trajectoire du ratio reste marquée par des oscillations trimestrielles dues à une sur-correction des chocs macroéconomiques sur la période etudié. Si ces mécanismes de rappel interne assurent une certaine résilience au secteur, la dépendance aux variables financières demeure majeure. Ces conclusions plaident donc en faveur d’une gestion proactive de l’allocation d’actifs et d’une
+surveillance accrue des cycles de taux, garantissant que la promesse d’indemnisation initiale soit honorée en
+dépit de la volatilité des marchés.
 
 
 # Annexes
