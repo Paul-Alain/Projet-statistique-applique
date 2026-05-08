@@ -298,7 +298,7 @@ ggplot(df_scr_nat, aes(x = Anne, y = fp_moy, color = Nature, group = Nature)) +
 
 ### Répartition des compagnies par famille
 
-La répartition par famille montre que les entreprises dans notre base sont majoritairement les organismes mutualistes, lesquels représentent $53,71 \%$ de l’ensemble des compagnies. Les bancassureurs et les assureurs traditionnels représentant chacun approximativemen $23\%$.
+La répartition par famille montre que les entreprises dans notre base sont majoritairement les organismes mutualistes, lesquels représentent $53,71 \%$ de l’ensemble des compagnies. Les bancassureurs et les assureurs traditionnels représentant chacun approximativement $23\%$.
 
 ```{r, out.width='60%', fig.align='center'}
 # Percentage calculation per Famille
