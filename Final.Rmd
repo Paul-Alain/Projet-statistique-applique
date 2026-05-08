@@ -337,7 +337,7 @@ ggplot(df_scr_fam, aes(x = Anne, y = fp_moy, color = Famille, group = Famille)) 
   labs(
     title = "Évolution des fonds propres moyens par Famille",
     x = "Année",
-    y = "fonds propres ",
+    y = "Fonds propres ",
     color = "Famille"
   ) +
   theme_minimal(base_size = 14) +
