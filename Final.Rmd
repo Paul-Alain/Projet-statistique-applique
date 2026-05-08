@@ -80,22 +80,22 @@ df_orig<-df
 # Introduction
 
 
-L’activité d’assurance repose sur un mécanisme de production inversé : l’assureur perçoit les primes avant de connaître avec certitude le montant réel des dépenses qu’il devra engager. En effet, celui-ci est lié à l’assuré par une promesse d’indemnisation en cas de réalisation du risque couvert. Le maintien d’un tel système nécessite donc un renforcement constant des dispositifs de contrôle de la capacité des assureurs à honorer leurs engagements. C’est dans cette perspective que s’inscrit le cadre réglementaire de Solvabilité II, entré en vigueur en 2016, dont l’objectif principal est de garantir que les compagnies d’assurance disposent de fonds propres suffisants pour faire face à leurs obligations et ainsi instaurer un climat de confiance entre assureurs et assurés. 
+L’activité d’assurance repose sur un mécanisme de production inversé : l’assureur perçoit les primes avant de connaître avec certitude le montant réel des dépenses qu’il devra engager. En effet, l’assureur est lié à l’assuré par une promesse d’indemnisation en cas de réalisation du risque couvert. Le maintien d’un tel système nécessite donc un renforcement constant des dispositifs de contrôle de la capacité des assureurs à honorer leurs engagements. C’est dans cette perspective que s’inscrit le cadre réglementaire de Solvabilité II, entré en vigueur en 2016, dont l’objectif principal est de garantir que les compagnies d’assurance disposent de fonds propres suffisants pour faire face à leurs obligations et ainsi instaurer un climat de confiance entre assureurs et assurés. 
 
 
-La solvabilité d’une compagnie d’assurance désigne sa capacité à respecter ses engagements financiers à court, moyen et long terme, notamment en matière de règlement des sinistres et de prestations contractuelles. Elle constitue ainsi un indicateur fondamental de la solidité financière des assureurs. Toutefois, cette solvabilité demeure fortement influencée par l’environnement économique et financier. Par exemple, une hausse du taux d’inflation peut entraîner une augmentation mécanique du coût des sinistres, tandis qu’une variation des taux d’intérêt affecte à la fois les perspectives de rendement des placements financiers et la valorisation des obligations détenues par les compagnies d’assurance.
+La solvabilité d’une compagnie d’assurance correspond à sa capacité à respecter ses engagements financiers à court, moyen et long terme, notamment en matière de règlement des sinistres et de prestations contractuelles. Elle constitue ainsi une composante fondamentale de la solidité financière des assureurs. Toutefois, cette solvabilité demeure fortement influencée par l’environnement économique et financier. Par exemple, une hausse du taux d’inflation peut entraîner une augmentation mécanique du coût des sinistres, tandis qu’une variation des taux d’intérêt affecte à la fois les perspectives de rendement des placements financiers et la valorisation des obligations détenues par les compagnies d’assurance.
 
 
-Dans un contexte marqué par la volatilité des marchés financiers, les risques de perturbation des chaînes de valeur économiques, ainsi que le renforcement des exigences prudentielles, il devient essentiel de mieux comprendre les déterminants de la solvabilité des entreprises d’assurance. Cette problématique est d’autant plus importante que la stabilité et la pérennité du secteur assurantiel en dépendent directement.
+Dans un contexte marqué par la volatilité des marchés financiers, les risques de perturbation des chaînes de valeur économiques, ainsi que le renforcement des exigences prudentielles, il devient essentiel de mieux comprendre les déterminants de la solvabilité des entreprises d’assurance. Cette problématique est d’autant plus importante que la stabilité du secteur assurantiel en dépend directement.
 
 
 Le présent travail a donc pour objectif d’évaluer l’impact des variables financières et macroéconomiques sur la solvabilité des entreprises d’assurance en France. Plus précisément, il s’agira d’identifier les variables les plus significatives et de mesurer leur influence sur la solidité financière des assureurs. La résolution de cette problématique reposera sur la mobilisation d’outils économétriques appliqués à des données financières, macroéconomiques et à des indicateurs de solvabilité propres au secteur de l’assurance.
 
 
-Cette étude permettra notamment d’apprécier le degré de dépendance de la solvabilité des assureurs vis-à-vis des variables macro-financières. Elle constitue ainsi un outil d’aide à la décision pour les compagnies d’assurance, les décideurs publics ainsi que les autorités de régulation prudentielle.
+Cette étude permettra notamment d’apprécier le degré de dépendance de la solvabilité des assureurs vis-à-vis des variables macro-financières.  Elle constitue ainsi, pour France Assureurs, un outil d’analyse et de compréhension de la solvabilité de l’ensemble du secteur, et pourrait être utile aux autorités de régulation prudentielle.
 
 # Cadre macroéconomique et règlementaire
-## Les formules du SCR
+## Les calculs du SCR
 
 Le SCR (*Solvency Capital Requirement*) représente l’exigence en fonds propres permettant à un assureur de faire face à ses risques sur un horizon d’un an avec une probabilité de 99,5 %, soit l’équivalent d’une faillite théorique tous les 200 ans. Les assureurs peuvent utiliser la formule standard définie par l’EIOPA, un modèle interne propre à leur structure de risque, ou une combinaison des deux (modèle partiel). Le SCR se décompose en trois termes :
 
@@ -117,6 +117,8 @@ Les coefficients $Corr_{i,j}$ de la formule du BSCR sont issus de la matrice sui
 | Souscription Santé | 0,25 | 0,25 | 0,25 | 1 | 0 |
 | Souscription Non-vie | 0,25 | 0,5 | 0 | 0 | 1 |
 
+Dans la matrice BSCR, le risque de défaut présente une corrélation de 0,25 avec tous les autres modules, à l’exception de la souscription non-vie avec laquelle la corrélation est portée à 0,5, reflétant l’interdépendance entre la sinistralité et les défauts de réassureurs.
+
 ### Risque de souscription
 
 Le risque de souscription couvre l’incertitude sur les résultats des contrats, due notamment à des erreurs de tarification, de provisionnement ou à la survenance d’événements extrêmes. Il se divise en trois modules distincts, chacun calculé par agrégation matricielle de ses propres sous-risques :
@@ -127,7 +129,7 @@ $$SCR_{sant\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{Sant\acute{e}}_{i,j} \cdot SCR_
 $$SCR_{non-vie} = \sqrt{\sum_{(i,j)} Corr^{NV}_{i,j} \cdot SCR_i \cdot SCR_j}$$
 La matrice $Corr^{Vie}$ pour le risque vie comprend sept sous-risques. Les corrélations négatives, par exemple entre mortalité et longévité (−0,25), reflètent leur nature opposée : une hausse de la mortalité est défavorable pour les contrats décès mais favorable pour les rentes viagères, ce qui justifie une compensation partielle dans le calcul du SCR.
 
-### Matrice des sous-risques vie
+Matrice des sous-risques vie : 
 
 |  | Mortalité | Longévité | Invalidité | Dépenses | Révision | Cessation | Catastrophe |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -161,7 +163,7 @@ $$SCR_{march\acute{e}} = \sqrt{\sum_{(i,j)} Corr^{March\acute{e}}_{i,j} \cdot SC
 
 Le paramètre $A$ vaut 0 si $SCR_{taux}$ est issu d’un choc à la hausse, 0,5 sinon.
 
-### Détail des formules et chocs par sous-risque
+Détail des formules et chocs par sous-risque :
 
 | Sous-risque | Formule / Choc |
 |---|---|
@@ -181,8 +183,6 @@ Ce risque couvre la perte potentielle liée à la défaillance d’une contrepar
 | Réassureurs | Défaut d’un réassureur sur ses engagements de couverture envers le cédant. C’est l’une des expositions les plus significatives pour les assureurs ayant fortement externalisé leur risque. |
 | Banques dépositaires | Défaut d’un établissement bancaire détenant les actifs en dépôt. Cela concerne directement la valeur liquidative du portefeuille d’investissements de l’assureur. |
 | Autres débiteurs | Intermédiaires d’assurance, preneurs, montants à recevoir au titre des créances sur contrats. Cela comprend aussi les débiteurs au titre des procédures de recours et subrogations. |
-
-Dans la matrice BSCR, le risque de défaut présente une corrélation de 0,25 avec tous les autres modules, à l’exception de la souscription non-vie avec laquelle la corrélation est portée à 0,5, reflétant l’interdépendance entre la sinistralité et les défauts de réassureurs.
 
 ## Chronologie des évènements macroéconomiques
 
@@ -2681,8 +2681,6 @@ Cette variable décrit l’activité d’assurance de la société :
 - **Mixte** : compagnie présente à la fois sur les métiers Vie et Non-Vie.
 - **Réassurance** : activité de réassurance.
 - **FRPS** : fonds de retraite professionnelle supplémentaire.
-
-Dans notre analyse, nous nous intéresserons seulement aux natures **Non-Vie** et **Mixte**.
 
 ### Famille
 
